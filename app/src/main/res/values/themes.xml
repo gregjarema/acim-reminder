@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Uses the built-in Material light theme with a dark action bar so we
+         don't need to bundle the Material Components library. -->
+    <style name="Theme.AcimReminder" parent="@android:style/Theme.DeviceDefault.Light">
+        <item name="android:colorBackground">#F4F1EC</item>
+    </style>
+</resources>

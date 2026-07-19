@@ -1,0 +1,16 @@
+# Build outputs
+.gradle/
+build/
+app/build/
+*/build/
+
+# Local SDK path (each machine sets its own; CI uses ANDROID_HOME)
+local.properties
+
+# IDE
+.idea/
+*.iml
+.DS_Store
+
+# Keep the Gradle wrapper jar tracked (do NOT ignore it):
+!gradle/wrapper/gradle-wrapper.jar

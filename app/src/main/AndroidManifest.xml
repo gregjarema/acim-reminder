@@ -1,0 +1,75 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <!-- Show notifications (reminders + meditation countdown). Runtime-granted on Android 13+. -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+
+    <!-- Fire alarms at an exact minute even in Doze. USE_EXACT_ALARM is the
+         "alarm clock app" permission: it is granted automatically at install,
+         so there's nothing for you to toggle. Holding it also lets the end
+         bell play while the screen is off (Android 17 background-audio rule). -->
+    <uses-permission android:name="android.permission.USE_EXACT_ALARM" />
+
+    <!-- Re-arm today's remaining reminders after a reboot. -->
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+
+    <!-- Run the meditation as a foreground service so the end bell fires reliably. -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK" />
+
+    <!-- Keep the CPU awake during the 5 minutes so playback isn't paused. -->
+    <uses-permission android:name="android.permission.WAKE_LOCK" />
+
+    <!-- Ask the OS to stop battery-optimising this app so it isn't killed. -->
+    <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
+
+    <application
+        android:allowBackup="true"
+        android:icon="@mipmap/ic_launcher"
+        android:label="@string/app_name"
+        android:roundIcon="@mipmap/ic_launcher_round"
+        android:supportsRtl="true"
+        android:theme="@style/Theme.AcimReminder">
+
+        <activity
+            android:name=".MainActivity"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+
+        <!-- The meditation timer + bells. mediaPlayback type = allowed to make
+             sound in the background on Android 17. -->
+        <service
+            android:name=".MeditationService"
+            android:exported="false"
+            android:foregroundServiceType="mediaPlayback" />
+
+        <!-- Receives each scheduled reminder alarm and posts the notification. -->
+        <receiver
+            android:name=".ReminderReceiver"
+            android:exported="false" />
+
+        <!-- Fires the "Begin" action from a reminder notification. -->
+        <receiver
+            android:name=".BeginReceiver"
+            android:exported="false" />
+
+        <!-- Fires the end bell at the exact end-of-meditation minute. -->
+        <receiver
+            android:name=".EndBellReceiver"
+            android:exported="false" />
+
+        <!-- Re-arms alarms after the phone reboots. -->
+        <receiver
+            android:name=".BootReceiver"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+            </intent-filter>
+        </receiver>
+
+    </application>
+</manifest>

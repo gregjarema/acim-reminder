@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- White, simple bowl/bell for the status bar (Android tints it automatically). -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24"
+    android:tint="#FFFFFFFF">
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M4,11 L20,11 C20,11 19,18 12,18 C5,18 4,11 4,11 Z" />
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M3,10 L21,10 L21,11.5 L3,11.5 Z" />
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M12,4 m-1.6,0 a1.6,1.6 0 1,0 3.2,0 a1.6,1.6 0 1,0 -3.2,0" />
+</vector>

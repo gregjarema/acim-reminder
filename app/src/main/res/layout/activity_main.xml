@@ -1,0 +1,140 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:fillViewport="true">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:padding="24dp">
+
+        <TextView
+            android:id="@+id/tvEyebrow"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="A COURSE IN MIRACLES · WORKBOOK"
+            android:textSize="12sp"
+            android:letterSpacing="0.12"
+            android:textColor="#A08A63" />
+
+        <TextView
+            android:id="@+id/tvTitle"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:text="Lesson 99"
+            android:textSize="30sp"
+            android:textColor="#1A1A1A"
+            android:fontFamily="serif" />
+
+        <TextView
+            android:id="@+id/tvSubtitle"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="6dp"
+            android:text="Salvation is my only function here."
+            android:textSize="20sp"
+            android:textStyle="italic"
+            android:textColor="#7A6646"
+            android:fontFamily="serif" />
+
+        <Button
+            android:id="@+id/btnBegin"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="20dp"
+            android:text="Begin 5-minute meditation"
+            android:textAllCaps="false"
+            android:textSize="17sp" />
+
+        <TextView
+            android:id="@+id/tvHint"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:text="A soft bell opens and closes the five minutes. The bells use your phone's Alarm volume."
+            android:textSize="13sp"
+            android:textColor="#8A8070" />
+
+        <!-- First-run setup card. Buttons hide themselves once each is granted. -->
+        <LinearLayout
+            android:id="@+id/setupCard"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:layout_marginTop="24dp"
+            android:padding="16dp"
+            android:background="#FFFFFF">
+
+            <TextView
+                android:id="@+id/tvSetupHeader"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="One-time setup"
+                android:textSize="13sp"
+                android:letterSpacing="0.10"
+                android:textColor="#A08A63" />
+
+            <Button
+                android:id="@+id/btnNotif"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:textAllCaps="false"
+                android:text="1 · Allow notifications" />
+
+            <Button
+                android:id="@+id/btnExact"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:textAllCaps="false"
+                android:text="2 · Allow exact alarms" />
+
+            <Button
+                android:id="@+id/btnBattery"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:textAllCaps="false"
+                android:text="3 · Stop battery-optimising this app" />
+
+            <TextView
+                android:id="@+id/tvAllSet"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="4dp"
+                android:text="Setup complete — you're all set."
+                android:textSize="15sp"
+                android:textColor="#3B7A57"
+                android:visibility="gone" />
+        </LinearLayout>
+
+        <View
+            android:layout_width="match_parent"
+            android:layout_height="1dp"
+            android:layout_marginTop="24dp"
+            android:layout_marginBottom="20dp"
+            android:background="#E9E2D4" />
+
+        <TextView
+            android:id="@+id/tvLessonHeader"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="THE LESSON"
+            android:textSize="12sp"
+            android:letterSpacing="0.16"
+            android:textColor="#A08A63" />
+
+        <TextView
+            android:id="@+id/tvBody"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:textSize="17sp"
+            android:lineSpacingMultiplier="1.5"
+            android:textColor="#1E1E1E"
+            android:fontFamily="serif" />
+
+    </LinearLayout>
+</ScrollView>
