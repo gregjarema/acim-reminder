@@ -1,0 +1,73 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:fillViewport="true">
+
+    <LinearLayout
+        android:id="@+id/content"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:padding="24dp">
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Welcome"
+            android:textSize="30sp"
+            android:textColor="#1A1A1A"
+            android:fontFamily="serif" />
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="10dp"
+            android:text="A few quick permissions so your reminders arrive on time and the closing bell always rings — even with the screen off."
+            android:textSize="16sp"
+            android:lineSpacingMultiplier="1.4"
+            android:textColor="#4A463E" />
+
+        <Button
+            android:id="@+id/btnNotif"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="28dp"
+            android:textAllCaps="false"
+            android:text="1 · Allow notifications" />
+
+        <Button
+            android:id="@+id/btnExact"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:textAllCaps="false"
+            android:text="2 · Allow exact alarms" />
+
+        <Button
+            android:id="@+id/btnBattery"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:textAllCaps="false"
+            android:text="3 · Stop battery-optimising this app" />
+
+        <TextView
+            android:id="@+id/tvAllSet"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:text="All set — you're good to go."
+            android:textSize="16sp"
+            android:textColor="#3B7A57"
+            android:visibility="gone" />
+
+        <Button
+            android:id="@+id/btnContinue"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="36dp"
+            android:textAllCaps="false"
+            android:textSize="17sp"
+            android:text="Continue to today's lesson" />
+
+    </LinearLayout>
+</ScrollView>

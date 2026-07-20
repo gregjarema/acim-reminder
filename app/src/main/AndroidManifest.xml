@@ -43,6 +43,11 @@
             </intent-filter>
         </activity>
 
+        <!-- First-run permissions walkthrough. -->
+        <activity
+            android:name=".OnboardingActivity"
+            android:exported="false" />
+
         <!-- The meditation timer + bells. mediaPlayback type = allowed to make
              sound in the background on Android 17. -->
         <service

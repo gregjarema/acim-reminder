@@ -11,8 +11,8 @@ android {
         minSdk 33          // Android 13 — first version with runtime notification permission
         targetSdk 36       // Android 16 (the newest platform published to the build tools;
                            // Android 17 / API 37 isn't downloadable yet). Runs fine on Android 17.
-        versionCode 6
-        versionName "1.5-vibrate"
+        versionCode 7
+        versionName "1.6-onboarding"
     }
 
     buildTypes {
