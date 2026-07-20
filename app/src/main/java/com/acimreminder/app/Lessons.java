@@ -71,18 +71,19 @@ public final class Lessons {
         if (all.isEmpty()) {
             return new Lesson(DAY_ONE_NUMBER, "Lesson " + DAY_ONE_NUMBER, "", "", "");
         }
-        long offset = ChronoUnit.DAYS.between(DAY_ONE, date);
-        int target = (int) (DAY_ONE_NUMBER + offset);
+        int size = all.size();
 
-        int first = all.get(0).number;
-        int last = all.get(all.size() - 1).number;
-        if (target < first) target = first;
-        if (target > last) target = last;
-
-        for (Lesson l : all) {
-            if (l.number == target) return l;
+        // Index of the anchor lesson (DAY_ONE_NUMBER) in the sorted list.
+        int startIdx = 0;
+        for (int i = 0; i < size; i++) {
+            if (all.get(i).number == DAY_ONE_NUMBER) { startIdx = i; break; }
         }
-        return all.get(0);
+
+        // Advance one lesson per day from the anchor, cycling round the list so
+        // the schedule never runs dry (wraps back to the start after the last).
+        long offset = ChronoUnit.DAYS.between(DAY_ONE, date);
+        long idx = (((startIdx + offset) % size) + size) % size;
+        return all.get((int) idx);
     }
 
     private Lessons() {}
