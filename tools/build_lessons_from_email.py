@@ -26,7 +26,6 @@ PARA = re.compile(r'<p[^>]*class="[^"]*bard-text-block[^"]*"[^>]*>(.*?)</p>', re
 ANCHOR = re.compile(r'<a\s+href="([^"]+)"[^>]*>(.*?)</a>', re.S)
 TAG = re.compile(r'<[^>]+>')
 WS = re.compile(r'\s+')
-LESSON_LABEL = re.compile(r'^Lesson\s+(\d+)\b', re.I)
 
 
 def clean(fragment):
@@ -68,10 +67,14 @@ def extract(path):
     paras = [clean(p) for p in PARA.findall(src)]
     paras = [p for p in paras if p]
 
-    # Find the "Lesson N" label; the idea line follows it, then the body.
+    # Find the header line that ends with this lesson's number. The header text
+    # varies between emails ("Lesson 98" vs "A Course In Miracles Lesson 2"), so
+    # we match the number at the end of the line. The idea line follows it, then
+    # the body. \b before the number keeps "Lesson 2" from matching "Lesson 20".
+    label_re = re.compile(r'\bLesson\s+0*' + str(number) + r'\s*$', re.I)
     start = None
     for i, p in enumerate(paras):
-        if LESSON_LABEL.match(p):
+        if label_re.search(p):
             start = i
             break
 
