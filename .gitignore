@@ -14,3 +14,6 @@ local.properties
 
 # Keep the Gradle wrapper jar tracked (do NOT ignore it):
 !gradle/wrapper/gradle-wrapper.jar
+
+# Raw lesson emails (intermediate; lessons.json is the committed output)
+emails/
