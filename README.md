@@ -29,7 +29,7 @@ whole schedule by a day, change `DAY_ONE`.**
 
 ## What it does
 
-- **Reminders:** every hour on the hour from **07:00 to 22:00** (16 times a day)
+- **Reminders:** every hour on the hour from **06:00 to 22:00** (17 times a day)
   your phone shows a notification titled **"Time to practice"** with the line
   of *today's* lesson.
 - **Begin button on the notification:** starts the 5-minute meditation straight

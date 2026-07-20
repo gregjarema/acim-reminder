@@ -26,7 +26,7 @@ public final class Scheduler {
 
     private static final String TAG = "Scheduler";
 
-    public static final int START_HOUR = 7;   // 07:00
+    public static final int START_HOUR = 6;   // 06:00
     public static final int END_HOUR = 22;     // 22:00 inclusive
 
     static final String ACTION_REMIND = "com.acimreminder.app.REMIND";
