@@ -2,7 +2,6 @@ package com.acimreminder.app;
 
 import android.Manifest;
 import android.app.Activity;
-import android.app.AlarmManager;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.net.Uri;
@@ -19,9 +18,12 @@ import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowInsetsCompat;
 
 /**
- * First-run onboarding: walks through the three permissions the app needs to be
- * reliable, then hands off to the lesson screen. Shown only until it has been
- * completed once (see {@link #hasOnboarded}); after that the main screen is clean.
+ * First-run onboarding, one required step at a time — no skip:
+ *   1. Notifications (so you see reminders and the countdown).
+ *   2. Battery-optimisation exemption (so reminders and the closing bell aren't
+ *      delayed or killed). This prompt fires automatically the moment
+ *      notifications are granted, and you only reach the lesson once it's done.
+ * Shown only until completed once (onboarded flag in SharedPreferences).
  */
 public class OnboardingActivity extends Activity {
 
@@ -29,10 +31,11 @@ public class OnboardingActivity extends Activity {
     static final String KEY_ONBOARDED = "onboarded";
     private static final int REQ_NOTIF = 101;
 
-    private Button btnNotif, btnExact, btnBattery, btnContinue;
-    private TextView tvAllSet;
+    private TextView tvHeading, tvBody;
+    private Button btnAction;
+    private boolean batteryPrompted = false;
+    private boolean finished = false;
 
-    /** True once the user has finished onboarding at least once. */
     static boolean hasOnboarded(Activity a) {
         return a.getSharedPreferences(PREFS, MODE_PRIVATE).getBoolean(KEY_ONBOARDED, false);
     }
@@ -51,18 +54,13 @@ public class OnboardingActivity extends Activity {
             return insets;
         });
 
-        btnNotif = findViewById(R.id.btnNotif);
-        btnExact = findViewById(R.id.btnExact);
-        btnBattery = findViewById(R.id.btnBattery);
-        btnContinue = findViewById(R.id.btnContinue);
-        tvAllSet = findViewById(R.id.tvAllSet);
+        tvHeading = findViewById(R.id.tvHeading);
+        tvBody = findViewById(R.id.tvBody);
+        btnAction = findViewById(R.id.btnAction);
+        btnAction.setOnClickListener(v -> onAction());
 
-        btnNotif.setOnClickListener(v -> requestNotifications());
-        btnExact.setOnClickListener(v -> openExactAlarmSettings());
-        btnBattery.setOnClickListener(v -> requestIgnoreBatteryOptimisation());
-        btnContinue.setOnClickListener(v -> finishOnboarding());
-
-        // Kick off the notification prompt straight away on first entry.
+        render();
+        // Kick off the notification request straight away on first entry.
         if (!hasNotifications()) {
             requestNotifications();
         }
@@ -71,21 +69,48 @@ public class OnboardingActivity extends Activity {
     @Override
     protected void onResume() {
         super.onResume();
-        refresh();
+        render();
     }
 
-    private void refresh() {
-        boolean notif = hasNotifications();
-        boolean exact = hasExactAlarms();
-        boolean battery = isBatteryUnrestricted();
+    /** Show the current required step, or finish if everything's granted. */
+    private void render() {
+        if (finished) return;
 
-        btnNotif.setVisibility(notif ? View.GONE : View.VISIBLE);
-        btnExact.setVisibility(exact ? View.GONE : View.VISIBLE);
-        btnBattery.setVisibility(battery ? View.GONE : View.VISIBLE);
-        tvAllSet.setVisibility((notif && exact && battery) ? View.VISIBLE : View.GONE);
+        if (!hasNotifications()) {
+            tvHeading.setText("Notifications");
+            tvBody.setText("First, allow notifications so you can see each reminder and the live meditation countdown.");
+            btnAction.setText("Allow notifications");
+            return;
+        }
+
+        if (!isBatteryUnrestricted()) {
+            tvHeading.setText("One more step");
+            tvBody.setText("Let the app ignore battery optimisation, so your reminders fire on time and the closing bell always rings — even overnight. Choose “Allow” / “Don't optimise” on the next screen.");
+            btnAction.setText("Turn off battery optimisation");
+            // Pop the system prompt automatically the first time we land here.
+            if (!batteryPrompted) {
+                batteryPrompted = true;
+                requestIgnoreBatteryOptimisation();
+            }
+            return;
+        }
+
+        complete();
     }
 
-    private void finishOnboarding() {
+    private void onAction() {
+        if (!hasNotifications()) {
+            requestNotifications();
+        } else if (!isBatteryUnrestricted()) {
+            requestIgnoreBatteryOptimisation();
+        } else {
+            complete();
+        }
+    }
+
+    private void complete() {
+        if (finished) return;
+        finished = true;
         getSharedPreferences(PREFS, MODE_PRIVATE).edit().putBoolean(KEY_ONBOARDED, true).apply();
         Scheduler.scheduleAll(this);
         startActivity(new Intent(this, MainActivity.class));
@@ -99,11 +124,6 @@ public class OnboardingActivity extends Activity {
                 == PackageManager.PERMISSION_GRANTED;
     }
 
-    private boolean hasExactAlarms() {
-        AlarmManager am = getSystemService(AlarmManager.class);
-        return am != null && am.canScheduleExactAlarms();
-    }
-
     private boolean isBatteryUnrestricted() {
         PowerManager pm = getSystemService(PowerManager.class);
         return pm != null && pm.isIgnoringBatteryOptimizations(getPackageName());
@@ -111,16 +131,6 @@ public class OnboardingActivity extends Activity {
 
     private void requestNotifications() {
         requestPermissions(new String[]{Manifest.permission.POST_NOTIFICATIONS}, REQ_NOTIF);
-    }
-
-    private void openExactAlarmSettings() {
-        try {
-            startActivity(new Intent(Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM,
-                    Uri.parse("package:" + getPackageName())));
-        } catch (Exception e) {
-            startActivity(new Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
-                    Uri.parse("package:" + getPackageName())));
-        }
     }
 
     @SuppressWarnings("BatteryLife")
@@ -136,6 +146,8 @@ public class OnboardingActivity extends Activity {
     @Override
     public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] results) {
         super.onRequestPermissionsResult(requestCode, permissions, results);
-        refresh();
+        // When notifications are granted, render() advances to the battery step
+        // and auto-fires its prompt.
+        render();
     }
 }

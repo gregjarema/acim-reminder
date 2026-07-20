@@ -12,6 +12,7 @@
         android:padding="24dp">
 
         <TextView
+            android:id="@+id/tvHeading"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="Welcome"
@@ -20,54 +21,22 @@
             android:fontFamily="serif" />
 
         <TextView
+            android:id="@+id/tvBody"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="10dp"
-            android:text="A few quick permissions so your reminders arrive on time and the closing bell always rings — even with the screen off."
+            android:layout_marginTop="14dp"
             android:textSize="16sp"
-            android:lineSpacingMultiplier="1.4"
+            android:lineSpacingMultiplier="1.45"
             android:textColor="#4A463E" />
 
         <Button
-            android:id="@+id/btnNotif"
+            android:id="@+id/btnAction"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="28dp"
-            android:textAllCaps="false"
-            android:text="1 · Allow notifications" />
-
-        <Button
-            android:id="@+id/btnExact"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:textAllCaps="false"
-            android:text="2 · Allow exact alarms" />
-
-        <Button
-            android:id="@+id/btnBattery"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:textAllCaps="false"
-            android:text="3 · Stop battery-optimising this app" />
-
-        <TextView
-            android:id="@+id/tvAllSet"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="12dp"
-            android:text="All set — you're good to go."
-            android:textSize="16sp"
-            android:textColor="#3B7A57"
-            android:visibility="gone" />
-
-        <Button
-            android:id="@+id/btnContinue"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="36dp"
+            android:layout_marginTop="32dp"
             android:textAllCaps="false"
             android:textSize="17sp"
-            android:text="Continue to today's lesson" />
+            android:text="Continue" />
 
     </LinearLayout>
 </ScrollView>
