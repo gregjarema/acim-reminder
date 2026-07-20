@@ -5,7 +5,7 @@ A small, personal Android app that reminds you to pause and practice your
 with a soft bell at the start and end.
 
 It follows a **per-day schedule**: each calendar day shows that day's workbook
-lesson (currently Lessons **99–114**), advancing automatically at midnight.
+lesson (currently Lessons **98–114**), advancing automatically at midnight.
 
 ---
 
@@ -15,7 +15,7 @@ The lessons live in `app/src/main/assets/lessons.json`. The date-to-lesson
 mapping is anchored in `Lessons.java`:
 
 - `DAY_ONE` = the calendar day the sequence starts on (currently **2026-07-20**)
-- `DAY_ONE_NUMBER` = the lesson shown that day (**99**)
+- `DAY_ONE_NUMBER` = the lesson shown that day (**98**, so Lesson 99 falls on 2026-07-21)
 
 Each following day advances one lesson. Before the first day or after the last
 lesson available, it shows the nearest end (it never goes blank). **To shift the

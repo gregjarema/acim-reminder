@@ -29,8 +29,8 @@ public final class Lessons {
 
     /** The calendar day on which the schedule starts... */
     public static final LocalDate DAY_ONE = LocalDate.of(2026, 7, 20);
-    /** ...and the lesson number shown on that day. */
-    public static final int DAY_ONE_NUMBER = 99;
+    /** ...and the lesson number shown on that day (20 Jul = 98, so 99 falls on 21 Jul). */
+    public static final int DAY_ONE_NUMBER = 98;
 
     private static List<Lesson> cache;
 
