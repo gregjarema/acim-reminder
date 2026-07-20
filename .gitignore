@@ -17,3 +17,6 @@ local.properties
 
 # Raw lesson emails (intermediate; lessons.json is the committed output)
 emails/
+
+# Python cache
+__pycache__/
