@@ -5,6 +5,7 @@
     android:fillViewport="true">
 
     <LinearLayout
+        android:id="@+id/content"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="vertical"
@@ -39,6 +40,19 @@
             android:textStyle="italic"
             android:textColor="#7A6646"
             android:fontFamily="serif" />
+
+        <TextView
+            android:id="@+id/btnVideo"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="14dp"
+            android:text="▶  Watch today's lesson video"
+            android:textSize="15sp"
+            android:textColor="#7A6646"
+            android:clickable="true"
+            android:focusable="true"
+            android:paddingTop="4dp"
+            android:paddingBottom="4dp" />
 
         <Button
             android:id="@+id/btnBegin"

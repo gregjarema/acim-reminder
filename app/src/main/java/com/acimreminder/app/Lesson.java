@@ -14,6 +14,9 @@ public final class Lesson {
     /** The one-line idea, used as the reminder notification body. */
     public static final String PHRASE = "Salvation is my only function here.";
 
+    /** Marianne Williamson video for today's lesson (opens in the browser). */
+    public static final String VIDEO_URL = "https://vimeo.com/530725142/505d2f6547";
+
     /** The full lesson body (paragraphs separated by blank lines). */
     public static final String BODY = """
             Salvation and forgiveness are the same. They both imply that something has gone wrong; something to be saved from, forgiven for; something amiss that needs corrective change; something apart or different from the Will of God. Thus do both terms imply a thing impossible but yet which has occurred, resulting in a state of conflict seen between what is and what could never be.

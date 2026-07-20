@@ -7,7 +7,9 @@ import android.app.Service;
 import android.content.Intent;
 import android.content.pm.ServiceInfo;
 import android.os.IBinder;
+import android.os.SystemClock;
 import android.util.Log;
+import android.widget.RemoteViews;
 
 import androidx.core.app.NotificationCompat;
 
@@ -129,15 +131,20 @@ public class MeditationService extends Service {
         PendingIntent stopPi = PendingIntent.getService(
                 this, 0, stop, PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
 
+        // Custom layout with a large, self-ticking countdown clock. The
+        // Chronometer counts down to `base`, which is on the elapsed-realtime
+        // clock the widget uses (not wall-clock), so convert from endTime.
+        long base = SystemClock.elapsedRealtime() + (endTime - System.currentTimeMillis());
+        RemoteViews rv = new RemoteViews(getPackageName(), R.layout.notif_meditation);
+        rv.setChronometer(R.id.notif_chrono, base, null, true);
+        rv.setChronometerCountDown(R.id.notif_chrono, true);
+        rv.setTextViewText(R.id.notif_phrase, Lesson.PHRASE);
+
         return new NotificationCompat.Builder(this, Notify.CH_MEDITATION)
                 .setSmallIcon(R.drawable.ic_stat_bell)
-                .setContentTitle("Meditating")
-                .setContentText(Lesson.PHRASE)
-                // Native ticking countdown — the OS repaints it, not us.
-                .setUsesChronometer(true)
-                .setChronometerCountDown(true)
-                .setWhen(endTime)
-                .setShowWhen(true)
+                .setStyle(new NotificationCompat.DecoratedCustomViewStyle())
+                .setCustomContentView(rv)
+                .setCustomBigContentView(rv)
                 .setOngoing(true)
                 .setOnlyAlertOnce(true)
                 .setSilent(true)

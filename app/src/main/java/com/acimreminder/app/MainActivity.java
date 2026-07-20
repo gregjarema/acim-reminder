@@ -16,6 +16,9 @@ import android.widget.TextView;
 import android.widget.Toast;
 
 import androidx.core.content.ContextCompat;
+import androidx.core.graphics.Insets;
+import androidx.core.view.ViewCompat;
+import androidx.core.view.WindowInsetsCompat;
 
 /**
  * The app's one screen: shows the full lesson, a Begin button, and a small
@@ -36,11 +39,22 @@ public class MainActivity extends Activity {
 
         Notify.ensureChannels(this);
 
+        // The system draws us edge-to-edge, so pad the content clear of the
+        // status bar (top) and navigation bar (bottom).
+        final View content = findViewById(R.id.content);
+        final int pad = Math.round(24 * getResources().getDisplayMetrics().density);
+        ViewCompat.setOnApplyWindowInsetsListener(content, (v, insets) -> {
+            Insets bars = insets.getInsets(WindowInsetsCompat.Type.systemBars());
+            v.setPadding(pad, pad + bars.top, pad, pad + bars.bottom);
+            return insets;
+        });
+
         ((TextView) findViewById(R.id.tvTitle)).setText(Lesson.TITLE);
         ((TextView) findViewById(R.id.tvSubtitle)).setText(Lesson.PHRASE);
         ((TextView) findViewById(R.id.tvBody)).setText(Lesson.BODY);
 
         findViewById(R.id.btnBegin).setOnClickListener(v -> beginMeditation());
+        findViewById(R.id.btnVideo).setOnClickListener(v -> openVideo());
 
         btnNotif = findViewById(R.id.btnNotif);
         btnExact = findViewById(R.id.btnExact);
@@ -68,6 +82,14 @@ public class MainActivity extends Activity {
                 .setAction(MeditationService.ACTION_START);
         ContextCompat.startForegroundService(this, i);
         Toast.makeText(this, "Five minutes begins now.", Toast.LENGTH_SHORT).show();
+    }
+
+    private void openVideo() {
+        try {
+            startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse(Lesson.VIDEO_URL)));
+        } catch (Exception e) {
+            Toast.makeText(this, "Couldn't open the video.", Toast.LENGTH_SHORT).show();
+        }
     }
 
     // ---- setup card ----
