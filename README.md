@@ -4,9 +4,26 @@ A small, personal Android app that reminds you to pause and practice your
 *A Course in Miracles* workbook lesson, and runs a gentle 5-minute meditation
 with a soft bell at the start and end.
 
-**Version 1** does one day only — **Lesson 99, "Salvation is my only function
-here."** Once this is working reliably on your phone, we'll add the rest of the
-lessons and a per-day schedule.
+It follows a **per-day schedule**: each calendar day shows that day's workbook
+lesson (currently Lessons **99–114**), advancing automatically at midnight.
+
+---
+
+## The daily schedule
+
+The lessons live in `app/src/main/assets/lessons.json`. The date-to-lesson
+mapping is anchored in `Lessons.java`:
+
+- `DAY_ONE` = the calendar day the sequence starts on (currently **2026-07-20**)
+- `DAY_ONE_NUMBER` = the lesson shown that day (**99**)
+
+Each following day advances one lesson. Before the first day or after the last
+lesson available, it shows the nearest end (it never goes blank). **To shift the
+whole schedule by a day, change `DAY_ONE`.**
+
+**To add more lessons:** drop the new `lessonNNN.html` digests into
+`lessons_source/` and run `python3 tools/build_lessons.py` to regenerate
+`lessons.json`, then commit. The next build picks them up.
 
 ---
 
@@ -14,7 +31,7 @@ lessons and a per-day schedule.
 
 - **Reminders:** every hour on the hour from **07:00 to 22:00** (16 times a day)
   your phone shows a notification titled **"Time to practice"** with the line
-  *"Salvation is my only function here."*
+  of *today's* lesson.
 - **Begin button on the notification:** starts the 5-minute meditation straight
   away, without opening the app.
 - **Tap the notification itself:** opens the app to the full lesson, with a

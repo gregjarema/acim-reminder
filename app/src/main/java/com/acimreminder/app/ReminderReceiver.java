@@ -32,6 +32,7 @@ public class ReminderReceiver extends BroadcastReceiver {
 
     private void postReminder(Context ctx, int hour) {
         int notifId = NOTIF_BASE + (hour >= 0 ? hour : 0);
+        String phrase = Lessons.today(ctx).phrase;
 
         // Tapping the body opens the app to the full lesson.
         Intent open = new Intent(ctx, MainActivity.class)
@@ -50,8 +51,8 @@ public class ReminderReceiver extends BroadcastReceiver {
         NotificationCompat.Builder b = new NotificationCompat.Builder(ctx, Notify.CH_REMINDERS)
                 .setSmallIcon(R.drawable.ic_stat_bell)
                 .setContentTitle("Time to practice")
-                .setContentText(Lesson.PHRASE)
-                .setStyle(new NotificationCompat.BigTextStyle().bigText(Lesson.PHRASE))
+                .setContentText(phrase)
+                .setStyle(new NotificationCompat.BigTextStyle().bigText(phrase))
                 .setCategory(NotificationCompat.CATEGORY_REMINDER)
                 .setPriority(NotificationCompat.PRIORITY_HIGH)
                 .setAutoCancel(true)

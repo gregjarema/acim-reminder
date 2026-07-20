@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Collapsed meditation notification: a compact single row that fits the
+     limited collapsed height (so the clock is never cut off). Expand the
+     notification to get the big clock in notif_meditation_big.xml. -->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="horizontal"
+    android:gravity="center_vertical"
+    android:paddingTop="2dp"
+    android:paddingBottom="2dp">
+
+    <TextView
+        android:id="@+id/notif_title"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_weight="1"
+        android:textAppearance="@style/TextAppearance.Compat.Notification.Title"
+        android:text="Meditating" />
+
+    <Chronometer
+        android:id="@+id/notif_chrono"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="8dp"
+        android:includeFontPadding="false"
+        android:textAppearance="@style/TextAppearance.Compat.Notification.Title"
+        android:textSize="24sp"
+        android:textStyle="bold" />
+</LinearLayout>

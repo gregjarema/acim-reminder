@@ -49,12 +49,8 @@ public class MainActivity extends Activity {
             return insets;
         });
 
-        ((TextView) findViewById(R.id.tvTitle)).setText(Lesson.TITLE);
-        ((TextView) findViewById(R.id.tvSubtitle)).setText(Lesson.PHRASE);
-        ((TextView) findViewById(R.id.tvBody)).setText(Lesson.BODY);
-
         findViewById(R.id.btnBegin).setOnClickListener(v -> beginMeditation());
-        findViewById(R.id.btnVideo).setOnClickListener(v -> openVideo());
+        bindToday();
 
         btnNotif = findViewById(R.id.btnNotif);
         btnExact = findViewById(R.id.btnExact);
@@ -72,7 +68,24 @@ public class MainActivity extends Activity {
     @Override
     protected void onResume() {
         super.onResume();
+        bindToday();      // keep the lesson current across a midnight rollover
         refreshSetupUi();
+    }
+
+    /** Show today's scheduled lesson. */
+    private void bindToday() {
+        Lesson today = Lessons.today(this);
+        ((TextView) findViewById(R.id.tvTitle)).setText(today.title);
+        ((TextView) findViewById(R.id.tvSubtitle)).setText(today.phrase);
+        ((TextView) findViewById(R.id.tvBody)).setText(today.body);
+
+        View videoLink = findViewById(R.id.btnVideo);
+        if (today.video == null || today.video.isEmpty()) {
+            videoLink.setVisibility(View.GONE);
+        } else {
+            videoLink.setVisibility(View.VISIBLE);
+            videoLink.setOnClickListener(v -> openVideo(today.video));
+        }
     }
 
     private void beginMeditation() {
@@ -84,9 +97,9 @@ public class MainActivity extends Activity {
         Toast.makeText(this, "Five minutes begins now.", Toast.LENGTH_SHORT).show();
     }
 
-    private void openVideo() {
+    private void openVideo(String url) {
         try {
-            startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse(Lesson.VIDEO_URL)));
+            startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse(url)));
         } catch (Exception e) {
             Toast.makeText(this, "Couldn't open the video.", Toast.LENGTH_SHORT).show();
         }

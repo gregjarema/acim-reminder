@@ -1,16 +1,16 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Custom content for the meditation notification: a large, self-ticking
-     countdown clock. The Chronometer widget updates itself once a second while
-     the notification is shown, so we never repaint it manually. Text styles use
-     the androidx notification text appearances so colours adapt to light/dark. -->
+<!-- Expanded meditation notification: a large, self-ticking countdown clock.
+     Used as the big content view, where Android allows the height a 54sp timer
+     needs (the collapsed view uses notif_meditation_collapsed.xml instead). -->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
     android:orientation="vertical"
-    android:paddingStart="4dp"
-    android:paddingEnd="4dp"
-    android:paddingTop="2dp"
-    android:paddingBottom="4dp">
+    android:gravity="center_horizontal"
+    android:paddingStart="8dp"
+    android:paddingEnd="8dp"
+    android:paddingTop="4dp"
+    android:paddingBottom="10dp">
 
     <TextView
         android:id="@+id/notif_title"
@@ -23,16 +23,18 @@
         android:id="@+id/notif_chrono"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_marginTop="2dp"
+        android:layout_marginTop="6dp"
+        android:layout_marginBottom="6dp"
+        android:gravity="center"
+        android:includeFontPadding="false"
         android:textAppearance="@style/TextAppearance.Compat.Notification.Title"
-        android:textSize="40sp"
-        android:textStyle="bold"
-        android:includeFontPadding="false" />
+        android:textSize="54sp"
+        android:textStyle="bold" />
 
     <TextView
         android:id="@+id/notif_phrase"
-        android:layout_width="wrap_content"
+        android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginTop="2dp"
+        android:gravity="center"
         android:textAppearance="@style/TextAppearance.Compat.Notification.Line2" />
 </LinearLayout>

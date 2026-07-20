@@ -131,20 +131,27 @@ public class MeditationService extends Service {
         PendingIntent stopPi = PendingIntent.getService(
                 this, 0, stop, PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
 
-        // Custom layout with a large, self-ticking countdown clock. The
-        // Chronometer counts down to `base`, which is on the elapsed-realtime
-        // clock the widget uses (not wall-clock), so convert from endTime.
+        // Custom layouts with a self-ticking countdown clock. The Chronometer
+        // counts down to `base`, which is on the elapsed-realtime clock the
+        // widget uses (not wall-clock), so convert from endTime. Collapsed uses
+        // a compact clock that fits; expanded uses a big one.
         long base = SystemClock.elapsedRealtime() + (endTime - System.currentTimeMillis());
-        RemoteViews rv = new RemoteViews(getPackageName(), R.layout.notif_meditation);
-        rv.setChronometer(R.id.notif_chrono, base, null, true);
-        rv.setChronometerCountDown(R.id.notif_chrono, true);
-        rv.setTextViewText(R.id.notif_phrase, Lesson.PHRASE);
+        String phrase = Lessons.today(this).phrase;
+
+        RemoteViews small = new RemoteViews(getPackageName(), R.layout.notif_meditation_collapsed);
+        small.setChronometer(R.id.notif_chrono, base, null, true);
+        small.setChronometerCountDown(R.id.notif_chrono, true);
+
+        RemoteViews big = new RemoteViews(getPackageName(), R.layout.notif_meditation_big);
+        big.setChronometer(R.id.notif_chrono, base, null, true);
+        big.setChronometerCountDown(R.id.notif_chrono, true);
+        big.setTextViewText(R.id.notif_phrase, phrase);
 
         return new NotificationCompat.Builder(this, Notify.CH_MEDITATION)
                 .setSmallIcon(R.drawable.ic_stat_bell)
                 .setStyle(new NotificationCompat.DecoratedCustomViewStyle())
-                .setCustomContentView(rv)
-                .setCustomBigContentView(rv)
+                .setCustomContentView(small)
+                .setCustomBigContentView(big)
                 .setOngoing(true)
                 .setOnlyAlertOnce(true)
                 .setSilent(true)
@@ -158,7 +165,7 @@ public class MeditationService extends Service {
         return new NotificationCompat.Builder(this, Notify.CH_MEDITATION)
                 .setSmallIcon(R.drawable.ic_stat_bell)
                 .setContentTitle("Practice complete")
-                .setContentText(Lesson.PHRASE)
+                .setContentText(Lessons.today(this).phrase)
                 .setOngoing(false)
                 .setOnlyAlertOnce(true)
                 .setSilent(true)
