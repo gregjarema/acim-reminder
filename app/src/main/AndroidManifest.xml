@@ -20,6 +20,9 @@
     <!-- Keep the CPU awake during the 5 minutes so playback isn't paused. -->
     <uses-permission android:name="android.permission.WAKE_LOCK" />
 
+    <!-- Vibrate on reminder notifications. -->
+    <uses-permission android:name="android.permission.VIBRATE" />
+
     <!-- Ask the OS to stop battery-optimising this app so it isn't killed. -->
     <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
 
