@@ -1,83 +1,121 @@
 <?xml version="1.0" encoding="utf-8"?>
-<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
-    android:layout_height="match_parent"
-    android:fillViewport="true">
+    android:layout_height="match_parent">
 
-    <LinearLayout
-        android:id="@+id/content"
+    <ScrollView
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:orientation="vertical"
-        android:padding="24dp">
+        android:layout_height="match_parent"
+        android:fillViewport="true">
 
-        <TextView
-            android:id="@+id/tvTitle"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="Lesson 99"
-            android:textSize="30sp"
-            android:textColor="#1A1A1A"
-            android:fontFamily="serif" />
-
-        <TextView
-            android:id="@+id/tvSubtitle"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="6dp"
-            android:text="Salvation is my only function here."
-            android:textSize="20sp"
-            android:textStyle="italic"
-            android:textColor="#7A6646"
-            android:fontFamily="serif" />
-
-        <TextView
-            android:id="@+id/btnVideo"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="14dp"
-            android:text="▶  Watch today's lesson video"
-            android:textSize="15sp"
-            android:textColor="#7A6646"
-            android:clickable="true"
-            android:focusable="true"
-            android:paddingTop="4dp"
-            android:paddingBottom="4dp" />
-
-        <Button
-            android:id="@+id/btnBegin"
+        <LinearLayout
+            android:id="@+id/content"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="20dp"
-            android:text="Begin 5-minute meditation"
-            android:textAllCaps="false"
-            android:textSize="17sp" />
+            android:orientation="vertical"
+            android:padding="24dp">
 
-        <View
-            android:layout_width="match_parent"
-            android:layout_height="1dp"
-            android:layout_marginTop="24dp"
-            android:layout_marginBottom="20dp"
-            android:background="#E9E2D4" />
+            <TextView
+                android:id="@+id/tvTitle"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Lesson 99"
+                android:textSize="30sp"
+                android:textColor="#1A1A1A"
+                android:fontFamily="serif" />
 
-        <TextView
-            android:id="@+id/tvLessonHeader"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="THE LESSON"
-            android:textSize="12sp"
-            android:letterSpacing="0.16"
-            android:textColor="#A08A63" />
+            <TextView
+                android:id="@+id/tvSubtitle"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="6dp"
+                android:text="Salvation is my only function here."
+                android:textSize="20sp"
+                android:textStyle="italic"
+                android:textColor="#7A6646"
+                android:fontFamily="serif" />
 
-        <TextView
-            android:id="@+id/tvBody"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="12dp"
-            android:textSize="17sp"
-            android:lineSpacingMultiplier="1.5"
-            android:textColor="#1E1E1E"
-            android:fontFamily="serif" />
+            <TextView
+                android:id="@+id/btnVideo"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="14dp"
+                android:text="▶  Watch today's lesson video"
+                android:textSize="15sp"
+                android:textColor="#7A6646"
+                android:clickable="true"
+                android:focusable="true"
+                android:paddingTop="4dp"
+                android:paddingBottom="4dp" />
 
-    </LinearLayout>
-</ScrollView>
+            <!-- Plays inline, right above the lesson text, so you can watch (or
+                 just listen) while reading along. Hidden until btnVideo is tapped. -->
+            <FrameLayout
+                android:id="@+id/videoBox"
+                android:layout_width="match_parent"
+                android:layout_height="220dp"
+                android:layout_marginTop="14dp"
+                android:background="#000000"
+                android:visibility="gone">
+
+                <WebView
+                    android:id="@+id/webView"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent" />
+
+                <ProgressBar
+                    android:id="@+id/videoProgress"
+                    style="?android:attr/progressBarStyleLarge"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_gravity="center" />
+
+            </FrameLayout>
+
+            <Button
+                android:id="@+id/btnBegin"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="20dp"
+                android:text="Begin 5-minute meditation"
+                android:textAllCaps="false"
+                android:textSize="17sp" />
+
+            <View
+                android:layout_width="match_parent"
+                android:layout_height="1dp"
+                android:layout_marginTop="24dp"
+                android:layout_marginBottom="20dp"
+                android:background="#E9E2D4" />
+
+            <TextView
+                android:id="@+id/tvLessonHeader"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="THE LESSON"
+                android:textSize="12sp"
+                android:letterSpacing="0.16"
+                android:textColor="#A08A63" />
+
+            <TextView
+                android:id="@+id/tvBody"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="12dp"
+                android:textSize="17sp"
+                android:lineSpacingMultiplier="1.5"
+                android:textColor="#1E1E1E"
+                android:fontFamily="serif" />
+
+        </LinearLayout>
+    </ScrollView>
+
+    <!-- Full-screen overlay for the player's own fullscreen button. -->
+    <FrameLayout
+        android:id="@+id/fullscreenContainer"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:background="#000000"
+        android:visibility="gone" />
+
+</FrameLayout>

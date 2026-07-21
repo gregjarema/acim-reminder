@@ -43,8 +43,9 @@ commit.
   away, without opening the app.
 - **Tap the notification itself:** opens the app to the full lesson, with a
   **Begin** button there too.
-- **Watch today's video:** plays right inside the app in an embedded player —
-  no browser or the Vimeo app opens.
+- **Watch today's video:** plays inline right above the lesson text, so you
+  can watch (or just listen) while reading along — no browser or the Vimeo
+  app opens.
 - **The meditation:** a soft bell rings, a **live 5-minute countdown** ticks
   down in your notification shade, and the bell rings again at the end — even if
   your screen is off and your phone is idle.
