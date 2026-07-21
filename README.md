@@ -6,8 +6,8 @@ with a soft bell at the start and end.
 
 It follows a **per-day schedule** across the **complete 365-lesson workbook**:
 each calendar day shows that day's lesson — with Marianne Williamson's video
-link and the lesson text (italic emphasis preserved) — advancing automatically
-at midnight and cycling round the year.
+playing right in the app and the lesson text (italic emphasis preserved) —
+advancing automatically at midnight and cycling round the year.
 
 ---
 
@@ -43,6 +43,8 @@ commit.
   away, without opening the app.
 - **Tap the notification itself:** opens the app to the full lesson, with a
   **Begin** button there too.
+- **Watch today's video:** plays right inside the app in an embedded player —
+  no browser or the Vimeo app opens.
 - **The meditation:** a soft bell rings, a **live 5-minute countdown** ticks
   down in your notification shade, and the bell rings again at the end — even if
   your screen is off and your phone is idle.

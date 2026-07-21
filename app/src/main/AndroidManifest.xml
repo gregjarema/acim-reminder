@@ -26,6 +26,9 @@
     <!-- Ask the OS to stop battery-optimising this app so it isn't killed. -->
     <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
 
+    <!-- Stream today's lesson video in an in-app player instead of a browser. -->
+    <uses-permission android:name="android.permission.INTERNET" />
+
     <application
         android:allowBackup="true"
         android:icon="@mipmap/ic_launcher"
@@ -47,6 +50,12 @@
         <activity
             android:name=".OnboardingActivity"
             android:exported="false" />
+
+        <!-- In-app video player for today's lesson video. -->
+        <activity
+            android:name=".VideoActivity"
+            android:exported="false"
+            android:configChanges="orientation|screenSize|keyboardHidden" />
 
         <!-- The meditation timer + bells. mediaPlayback type = allowed to make
              sound in the background on Android 17. -->

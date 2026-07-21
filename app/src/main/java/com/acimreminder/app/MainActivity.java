@@ -2,7 +2,6 @@ package com.acimreminder.app;
 
 import android.app.Activity;
 import android.content.Intent;
-import android.net.Uri;
 import android.os.Bundle;
 import android.text.Html;
 import android.view.View;
@@ -92,7 +91,8 @@ public class MainActivity extends Activity {
 
     private void openVideo(String url) {
         try {
-            startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse(url)));
+            startActivity(new Intent(this, VideoActivity.class)
+                    .putExtra(VideoActivity.EXTRA_VIDEO_URL, url));
         } catch (Exception e) {
             Toast.makeText(this, "Couldn't open the video.", Toast.LENGTH_SHORT).show();
         }
