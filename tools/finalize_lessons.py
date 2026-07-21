@@ -1,15 +1,21 @@
 #!/usr/bin/env python3
 """
-Assemble the final app/src/main/assets/lessons.json.
+Assemble the final app/src/main/assets/lessons.json — the full workbook.
 
-Sources:
-  - Lessons 98-114: the existing lessons.json (clean digest data).
-  - Lessons 115+  : parsed from the emails in emails/.
+Sources, in order of preference for any given lesson number:
+  1. The parse of the saved email in emails/lessonNNN.html (the uniform source,
+     and the only one that carries the italic emphasis).
+  2. Any older vetted entry already in lessons.json — used only to fill a number
+     that no email can supply.
 
-We ship the largest CONTIGUOUS run starting at lesson 98 (so the daily schedule
-never hits a gap). The app cycles through these in order (see Lessons.java).
-Whatever emails exist beyond the contiguous run are ignored for now; rerun this
-after fetching more to extend the run.
+We ship EVERY lesson we can parse cleanly (a non-empty phrase and body; the
+video link is a bonus — the earliest lessons' emails simply don't carry one).
+The list is sorted by lesson number, and the app cycles through it one lesson
+per calendar day (see Lessons.java), so a complete list means the right lesson
+shows every day of the year.
+
+Any gaps in 1..365 are printed at the end so we know what's still worth
+fetching. Rerun after fetching more emails to extend coverage.
 
 Usage: python3 tools/finalize_lessons.py
 """
@@ -26,39 +32,48 @@ spec = importlib.util.spec_from_file_location("b", os.path.join(HERE, "build_les
 b = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(b)
 
-START = 98
 
-# Base: existing lessons.json (digest data for 98-114).
+def valid(lesson):
+    return bool(lesson.get("phrase")) and bool(lesson.get("body"))
+
+
+# 1. Vetted entries already in lessons.json.
 base = {}
 if os.path.exists(OUT):
     for l in json.load(open(OUT, encoding="utf-8")):
-        base[l["number"]] = l
+        if valid(l):
+            base[l["number"]] = l
 
-# Emails: everything valid.
+# 2. Everything else we can parse from the emails.
 emailed = {}
 for f in glob.glob(os.path.join(EMAILS, "lesson*.html")):
     d = b.extract(f)
-    if d["phrase"] and d["body"] and d["video"]:
+    d.pop("_warn", None)
+    if valid(d):
         emailed[d["number"]] = d
 
-covered = set(base) | set(emailed)
+# Day 1 comes from the special "Welcome" email (Introduction + Lesson 1 together).
+welcome = os.path.join(EMAILS, "welcome.html")
+if os.path.exists(welcome):
+    d = b.extract_welcome(welcome)
+    d.pop("_warn", None)
+    if valid(d):
+        emailed[1] = d
 
-# Largest contiguous run from START.
-n = START
-while n in covered:
-    n += 1
-last = n - 1
+merged = {}
+for num in set(base) | set(emailed):
+    merged[num] = emailed[num] if num in emailed else base[num]
 
-out = []
-for num in range(START, last + 1):
-    # Prefer the clean digest entry where we have one, else the email parse.
-    out.append(base.get(num) if num in base else emailed[num])
+out = [merged[num] for num in sorted(merged)]
 
 with open(OUT, "w", encoding="utf-8") as f:
     json.dump(out, f, ensure_ascii=False, indent=2)
 
-print(f"Shipped contiguous lessons {START}..{last}  ({len(out)} lessons)")
-extra = sorted(k for k in emailed if k > last)
-if extra:
-    print(f"(on disk but beyond the contiguous run, not shipped yet: {len(extra)} lessons, "
-          f"first few: {extra[:10]})")
+nums = sorted(merged)
+with_video = sum(1 for l in out if l.get("video"))
+print(f"Shipped {len(out)} lessons  (range {nums[0]}..{nums[-1]}, {with_video} with video links)")
+missing = [n for n in range(1, 366) if n not in merged]
+if missing:
+    print(f"Still missing from 1..365 ({len(missing)}): {missing}")
+else:
+    print("Complete workbook: every lesson 1..365 present.")

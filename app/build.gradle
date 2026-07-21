@@ -11,8 +11,8 @@ android {
         minSdk 33          // Android 13 — first version with runtime notification permission
         targetSdk 36       // Android 16 (the newest platform published to the build tools;
                            // Android 17 / API 37 isn't downloadable yet). Runs fine on Android 17.
-        versionCode 10
-        versionName "1.9-lessons133"
+        versionCode 11
+        versionName "2.0-full-workbook"
     }
 
     buildTypes {

@@ -4,8 +4,10 @@ A small, personal Android app that reminds you to pause and practice your
 *A Course in Miracles* workbook lesson, and runs a gentle 5-minute meditation
 with a soft bell at the start and end.
 
-It follows a **per-day schedule**: each calendar day shows that day's workbook
-lesson (currently Lessons **98–114**), advancing automatically at midnight.
+It follows a **per-day schedule** across the **complete 365-lesson workbook**:
+each calendar day shows that day's lesson — with Marianne Williamson's video
+link and the lesson text (italic emphasis preserved) — advancing automatically
+at midnight and cycling round the year.
 
 ---
 
@@ -17,13 +19,18 @@ mapping is anchored in `Lessons.java`:
 - `DAY_ONE` = the calendar day the sequence starts on (currently **2026-07-20**)
 - `DAY_ONE_NUMBER` = the lesson shown that day (**98**, so Lesson 99 falls on 2026-07-21)
 
-Each following day advances one lesson. Before the first day or after the last
-lesson available, it shows the nearest end (it never goes blank). **To shift the
+Each following day advances one lesson, and the list **cycles** — after Lesson
+365 it wraps back to Lesson 1, so the schedule never runs dry. **To shift the
 whole schedule by a day, change `DAY_ONE`.**
 
-**To add more lessons:** drop the new `lessonNNN.html` digests into
-`lessons_source/` and run `python3 tools/build_lessons.py` to regenerate
-`lessons.json`, then commit. The next build picks them up.
+Day 1 is special: it shows the Workbook **Introduction and Lesson 1 together**,
+taken from Marianne's "Welcome" email.
+
+**How the lesson list is built:** the raw lesson emails are saved under
+`emails/`, and `python3 tools/finalize_lessons.py` parses them into
+`app/src/main/assets/lessons.json` (recovering each Vimeo link and keeping the
+italic passages). To rebuild after changing an email, rerun that script and
+commit.
 
 ---
 

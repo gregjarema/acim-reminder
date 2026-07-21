@@ -22,8 +22,9 @@ import java.util.List;
  * or after the last available lesson, we clamp to the nearest end (so the app
  * always shows something sensible instead of crashing or going blank).
  *
- * To shift the whole schedule by a day, change DAY_ONE. To add lessons, drop
- * more HTML into lessons_source/ and rerun tools/build_lessons.py.
+ * To shift the whole schedule by a day, change DAY_ONE. The full 365-lesson
+ * list in assets/lessons.json is built from the saved Marianne emails by
+ * tools/finalize_lessons.py; the list cycles, so the schedule never runs dry.
  */
 public final class Lessons {
 

@@ -4,6 +4,7 @@ import android.app.Activity;
 import android.content.Intent;
 import android.net.Uri;
 import android.os.Bundle;
+import android.text.Html;
 import android.view.View;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -64,7 +65,12 @@ public class MainActivity extends Activity {
         Lesson today = Lessons.today(this);
         ((TextView) findViewById(R.id.tvTitle)).setText(today.title);
         ((TextView) findViewById(R.id.tvSubtitle)).setText(today.phrase);
-        ((TextView) findViewById(R.id.tvBody)).setText(today.body);
+        // The body carries italic emphasis (quoted Course passages, prayers) as
+        // <i> tags; paragraph breaks are blank lines. Render both as HTML.
+        String bodyHtml = today.body == null ? "" :
+                today.body.replace("\n\n", "<br><br>").replace("\n", "<br>");
+        ((TextView) findViewById(R.id.tvBody))
+                .setText(Html.fromHtml(bodyHtml, Html.FROM_HTML_MODE_COMPACT));
 
         View videoLink = findViewById(R.id.btnVideo);
         if (today.video == null || today.video.isEmpty()) {
