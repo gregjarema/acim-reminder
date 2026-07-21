@@ -38,6 +38,13 @@ public class MeditationService extends Service {
     /** Length of one session. Change this single number to make it shorter/longer. */
     public static final long DURATION_MS = 5 * 60 * 1000L;
 
+    /**
+     * Wall-clock end time of the running session (0 = none), in
+     * {@link OnboardingActivity#PREFS}. Lets MainActivity mirror the same
+     * countdown shown in the notification, even after a cold start.
+     */
+    public static final String KEY_MEDITATION_END_AT = "meditation_end_at";
+
     private static final int MED_NOTIF_ID = 3001;
     private static final int END_ALARM_REQUEST = 9001;
 
@@ -62,6 +69,8 @@ public class MeditationService extends Service {
     private void handleStart() {
         Notify.ensureChannels(this);
         long endTime = System.currentTimeMillis() + DURATION_MS;
+        getSharedPreferences(OnboardingActivity.PREFS, MODE_PRIVATE)
+                .edit().putLong(KEY_MEDITATION_END_AT, endTime).apply();
 
         startForeground(MED_NOTIF_ID, buildCountdown(endTime),
                 ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PLAYBACK);
@@ -86,6 +95,8 @@ public class MeditationService extends Service {
     }
 
     private void finish() {
+        getSharedPreferences(OnboardingActivity.PREFS, MODE_PRIVATE)
+                .edit().remove(KEY_MEDITATION_END_AT).apply();
         stopForeground(STOP_FOREGROUND_REMOVE);
         stopSelf();
     }

@@ -2,7 +2,11 @@ package com.acimreminder.app;
 
 import android.app.Activity;
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.os.Bundle;
+import android.os.Handler;
+import android.os.Looper;
+import android.os.SystemClock;
 import android.text.Html;
 import android.view.View;
 import android.view.ViewGroup;
@@ -10,6 +14,7 @@ import android.webkit.WebChromeClient;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
+import android.widget.Chronometer;
 import android.widget.FrameLayout;
 import android.widget.ProgressBar;
 import android.widget.TextView;
@@ -32,6 +37,10 @@ public class MainActivity extends Activity {
     private View fullscreenView;
     private WebChromeClient.CustomViewCallback fullscreenCallback;
     private int boundLessonNumber = -1;
+
+    private Chronometer chronoMeditation;
+    private final Handler mainHandler = new Handler(Looper.getMainLooper());
+    private Runnable meditationEndRunnable;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -58,8 +67,11 @@ public class MainActivity extends Activity {
         });
 
         setUpVideoPlayer();
+        chronoMeditation = findViewById(R.id.chronoMeditation);
+        chronoMeditation.setOnClickListener(v -> stopMeditation());
         findViewById(R.id.btnBegin).setOnClickListener(v -> beginMeditation());
         bindToday();
+        refreshMeditationState();
 
         // Arm today's reminders now, and again every time the app is opened.
         Scheduler.scheduleAll(this);
@@ -70,6 +82,7 @@ public class MainActivity extends Activity {
         super.onResume();
         if (OnboardingActivity.hasOnboarded(this)) {
             bindToday();      // keep the lesson current across a midnight rollover
+            refreshMeditationState();
         }
     }
 
@@ -186,11 +199,55 @@ public class MainActivity extends Activity {
         Intent i = new Intent(this, MeditationService.class)
                 .setAction(MeditationService.ACTION_START);
         ContextCompat.startForegroundService(this, i);
-        Toast.makeText(this, "Five minutes begins now.", Toast.LENGTH_SHORT).show();
+        // The service persists this same end time; computing it here too (rather
+        // than waiting on it) shows the countdown immediately with no lag.
+        showMeditationActive(System.currentTimeMillis() + MeditationService.DURATION_MS);
+    }
+
+    private void stopMeditation() {
+        startService(new Intent(this, MeditationService.class)
+                .setAction(MeditationService.ACTION_STOP));
+        hideMeditationActive();
+    }
+
+    /** Mirror whatever the notification is currently showing — active or not. */
+    private void refreshMeditationState() {
+        SharedPreferences prefs = getSharedPreferences(OnboardingActivity.PREFS, MODE_PRIVATE);
+        long endAt = prefs.getLong(MeditationService.KEY_MEDITATION_END_AT, 0);
+        if (endAt > System.currentTimeMillis()) {
+            showMeditationActive(endAt);
+        } else {
+            hideMeditationActive();
+        }
+    }
+
+    /** Show the same live countdown the notification has, in the app too. */
+    private void showMeditationActive(long endTime) {
+        findViewById(R.id.btnBegin).setVisibility(View.GONE);
+        chronoMeditation.setVisibility(View.VISIBLE);
+        chronoMeditation.setCountDown(true);
+        chronoMeditation.setFormat("Meditating — %s remaining · tap to stop");
+        chronoMeditation.setBase(SystemClock.elapsedRealtime() + (endTime - System.currentTimeMillis()));
+        chronoMeditation.start();
+
+        if (meditationEndRunnable != null) mainHandler.removeCallbacks(meditationEndRunnable);
+        meditationEndRunnable = this::hideMeditationActive;
+        mainHandler.postDelayed(meditationEndRunnable, Math.max(0, endTime - System.currentTimeMillis()));
+    }
+
+    private void hideMeditationActive() {
+        if (meditationEndRunnable != null) {
+            mainHandler.removeCallbacks(meditationEndRunnable);
+            meditationEndRunnable = null;
+        }
+        chronoMeditation.stop();
+        chronoMeditation.setVisibility(View.GONE);
+        findViewById(R.id.btnBegin).setVisibility(View.VISIBLE);
     }
 
     @Override
     protected void onDestroy() {
+        mainHandler.removeCallbacksAndMessages(null);
         if (webView != null) webView.destroy();
         super.onDestroy();
     }

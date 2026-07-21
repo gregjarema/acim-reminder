@@ -81,6 +81,23 @@
                 android:textAllCaps="false"
                 android:textSize="17sp" />
 
+            <!-- Mirrors the same live countdown shown in the notification, so
+                 you can see it in whichever place is in front of you. Hidden
+                 until Begin is tapped; tap it to stop early. -->
+            <Chronometer
+                android:id="@+id/chronoMeditation"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="20dp"
+                android:padding="14dp"
+                android:gravity="center"
+                android:textSize="18sp"
+                android:textColor="#7A6646"
+                android:background="?android:attr/selectableItemBackground"
+                android:clickable="true"
+                android:focusable="true"
+                android:visibility="gone" />
+
             <View
                 android:layout_width="match_parent"
                 android:layout_height="1dp"

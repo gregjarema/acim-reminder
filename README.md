@@ -47,8 +47,10 @@ commit.
   can watch (or just listen) while reading along — no browser or the Vimeo
   app opens.
 - **The meditation:** a soft bell rings, a **live 5-minute countdown** ticks
-  down in your notification shade, and the bell rings again at the end — even if
-  your screen is off and your phone is idle.
+  down — in your notification shade *and* right in the app, so you can see it
+  in whichever place is in front of you — and the bell rings again at the
+  end, even if your screen is off and your phone is idle. Tap the countdown
+  in the app to stop early.
 
 ---
 
