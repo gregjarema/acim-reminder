@@ -20,18 +20,12 @@ import androidx.core.graphics.Insets;
 import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowInsetsCompat;
 
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
-
 /**
  * The app's one screen: today's lesson, an inline video player you can read
  * alongside, and a Begin button. First-run permissions live in
  * {@link OnboardingActivity}, so this screen stays clean.
  */
 public class MainActivity extends Activity {
-
-    private static final Pattern VIMEO_ID_HASH =
-            Pattern.compile("vimeo\\.com/(\\d+)(?:/([a-zA-Z0-9]+))?");
 
     private WebView webView;
     private FrameLayout fullscreenContainer;
@@ -136,18 +130,6 @@ public class MainActivity extends Activity {
         }
     }
 
-    /** Rewrite a clean vimeo.com link to the official embeddable player URL. */
-    private static String playerUrl(String url) {
-        Matcher m = VIMEO_ID_HASH.matcher(url);
-        if (!m.find()) return url;   // not a clean vimeo.com link — load as-is
-        String id = m.group(1);
-        String hash = m.group(2);
-        String embed = "https://player.vimeo.com/video/" + id
-                + "?autoplay=1&title=0&byline=0&portrait=0";
-        if (hash != null) embed += "&h=" + hash;
-        return embed;
-    }
-
     /** Show today's scheduled lesson. */
     private void bindToday() {
         Lesson today = Lessons.today(this);
@@ -179,12 +161,20 @@ public class MainActivity extends Activity {
         }
     }
 
-    /** Load the video right above the lesson text so you can watch and read together. */
+    /**
+     * Load the video right above the lesson text so you can watch and read
+     * together. This loads the plain vimeo.com watch page as-is rather than
+     * rewriting it to the player.vimeo.com iframe-embed URL: these videos are
+     * locked to specific whitelisted domains for third-party embedding, so the
+     * embed URL hits Vimeo's "this video cannot be played here" privacy error.
+     * The plain vimeo.com page is Vimeo's own site, not a third-party embed,
+     * so only the link's own access hash matters there — it just plays.
+     */
     private void playInline(String url) {
         try {
             findViewById(R.id.btnVideo).setVisibility(View.GONE);
             findViewById(R.id.videoBox).setVisibility(View.VISIBLE);
-            webView.loadUrl(playerUrl(url));
+            webView.loadUrl(url);
         } catch (Exception e) {
             Toast.makeText(this, "Couldn't play the video.", Toast.LENGTH_SHORT).show();
         }
