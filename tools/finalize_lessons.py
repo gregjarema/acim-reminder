@@ -2,20 +2,25 @@
 """
 Assemble the final app/src/main/assets/lessons.json — the full workbook.
 
-Sources, in order of preference for any given lesson number:
-  1. The parse of the saved email in emails/lessonNNN.html (the uniform source,
-     and the only one that carries the italic emphasis).
-  2. Any older vetted entry already in lessons.json — used only to fill a number
-     that no email can supply.
+Three sources feed each lesson, merged FIELD BY FIELD (not whole-record) so a
+gap in one source doesn't blank out good data another source already has:
 
-We ship EVERY lesson we can parse cleanly (a non-empty phrase and body; the
-video link is a bonus — the earliest lessons' emails simply don't carry one).
-The list is sorted by lesson number, and the app cycles through it one lesson
-per calendar day (see Lessons.java), so a complete list means the right lesson
-shows every day of the year.
+  1. emails/lessonNNN.html  - parsed by build_lessons_from_email.py. Covers all
+     365 lessons and is the only source with italic emphasis preserved, but a
+     handful of individual emails are missing their video link (that
+     particular message just didn't include one — see Lesson 99).
+  2. lessons_source/lessonNNN.html - the original clean digests for lessons
+     98-114 that Greg uploaded directly; every one has a verified video link,
+     so this fills in any video an email happened to be missing.
+  3. The lessons.json already on disk - last-resort fallback for anything
+     only ever captured there.
 
-Any gaps in 1..365 are printed at the end so we know what's still worth
-fetching. Rerun after fetching more emails to extend coverage.
+For each field (phrase/body/video) we take the first non-empty value in that
+priority order. Concretely: emailed body wins (keeps italics), but if an
+email's video is blank we fall back to the digest's or the existing entry's.
+
+Any gaps in 1..365 are printed at the end. Rerun after fetching more emails
+to extend coverage.
 
 Usage: python3 tools/finalize_lessons.py
 """
@@ -27,24 +32,25 @@ import os
 HERE = os.path.dirname(__file__)
 OUT = os.path.abspath(os.path.join(HERE, "..", "app", "src", "main", "assets", "lessons.json"))
 EMAILS = os.path.abspath(os.path.join(HERE, "..", "emails"))
+DIGESTS = os.path.abspath(os.path.join(HERE, "..", "lessons_source"))
 
-spec = importlib.util.spec_from_file_location("b", os.path.join(HERE, "build_lessons_from_email.py"))
-b = importlib.util.module_from_spec(spec)
-spec.loader.exec_module(b)
+
+def load_module(name, filename):
+    spec = importlib.util.spec_from_file_location(name, os.path.join(HERE, filename))
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    return mod
+
+
+b = load_module("b", "build_lessons_from_email.py")
+bd = load_module("bd", "build_lessons.py")
 
 
 def valid(lesson):
     return bool(lesson.get("phrase")) and bool(lesson.get("body"))
 
 
-# 1. Vetted entries already in lessons.json.
-base = {}
-if os.path.exists(OUT):
-    for l in json.load(open(OUT, encoding="utf-8")):
-        if valid(l):
-            base[l["number"]] = l
-
-# 2. Everything else we can parse from the emails.
+# 1. Parsed from the saved emails (broadest coverage, keeps italics).
 emailed = {}
 for f in glob.glob(os.path.join(EMAILS, "lesson*.html")):
     d = b.extract(f)
@@ -60,9 +66,40 @@ if os.path.exists(welcome):
     if valid(d):
         emailed[1] = d
 
+# 2. The original clean digests (98-114) - authoritative for their video links.
+digest = {}
+if os.path.isdir(DIGESTS):
+    for f in glob.glob(os.path.join(DIGESTS, "lesson*.html")):
+        d = bd.extract(f)
+        if valid(d):
+            digest[d["number"]] = d
+
+# 3. Whatever's already shipped, as a last-resort fallback.
+base = {}
+if os.path.exists(OUT):
+    for l in json.load(open(OUT, encoding="utf-8")):
+        if valid(l):
+            base[l["number"]] = l
+
+SOURCES = (emailed, digest, base)
+
+
+def first_nonempty(num, field):
+    for src in SOURCES:
+        if num in src and src[num].get(field):
+            return src[num][field]
+    return ""
+
+
 merged = {}
-for num in set(base) | set(emailed):
-    merged[num] = emailed[num] if num in emailed else base[num]
+for num in set(emailed) | set(digest) | set(base):
+    merged[num] = {
+        "number": num,
+        "title": first_nonempty(num, "title") or f"Lesson {num}",
+        "phrase": first_nonempty(num, "phrase"),
+        "video": first_nonempty(num, "video"),
+        "body": first_nonempty(num, "body"),
+    }
 
 out = [merged[num] for num in sorted(merged)]
 
