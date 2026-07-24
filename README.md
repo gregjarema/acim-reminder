@@ -37,8 +37,8 @@ commit.
 ## What it does
 
 - **Reminders:** every hour on the hour from **06:00 to 22:00** (17 times a day)
-  your phone shows a notification titled **"Time to practice"** with the line
-  of *today's* lesson.
+  your phone shows a notification whose headline *is* the line of *today's*
+  lesson.
 - **Begin button on the notification:** starts the 5-minute meditation straight
   away, without opening the app.
 - **Tap the notification itself:** opens the app to the full lesson, with a
@@ -163,7 +163,7 @@ app/src/main/java/com/acimreminder/app/
   MainActivity.java       the single screen: lesson text, Begin, setup card
   Lesson.java             the hardcoded Lesson 99 text
   Scheduler.java          arms the 16 daily reminder alarms
-  ReminderReceiver.java   posts each "Time to practice" notification
+  ReminderReceiver.java   posts each hourly lesson reminder notification
   BeginReceiver.java      the notification's Begin button
   MeditationService.java  the 5-minute timer, countdown notification, bells
   BellPlayer.java         plays a bell as alarm audio

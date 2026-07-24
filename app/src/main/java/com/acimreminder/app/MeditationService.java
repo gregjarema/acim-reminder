@@ -158,6 +158,11 @@ public class MeditationService extends Service {
         big.setChronometerCountDown(R.id.notif_chrono, true);
         big.setTextViewText(R.id.notif_phrase, phrase);
 
+        // Not setSilent(true): a silent notification is filed under the hidden
+        // "silent" section and disappears from the lock screen. The channel
+        // already has no sound/vibration, so this stays quiet while remaining
+        // visible on the lock screen for the whole session. setOnlyAlertOnce
+        // keeps the per-second countdown ticks from re-alerting.
         return new NotificationCompat.Builder(this, Notify.CH_MEDITATION)
                 .setSmallIcon(R.drawable.ic_stat_bell)
                 .setStyle(new NotificationCompat.DecoratedCustomViewStyle())
@@ -165,7 +170,7 @@ public class MeditationService extends Service {
                 .setCustomBigContentView(big)
                 .setOngoing(true)
                 .setOnlyAlertOnce(true)
-                .setSilent(true)
+                .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
                 .setContentIntent(openPi)
                 .addAction(R.drawable.ic_stat_bell, "Stop", stopPi)
                 .setForegroundServiceBehavior(NotificationCompat.FOREGROUND_SERVICE_IMMEDIATE)
@@ -179,7 +184,7 @@ public class MeditationService extends Service {
                 .setContentText(Lessons.today(this).phrase)
                 .setOngoing(false)
                 .setOnlyAlertOnce(true)
-                .setSilent(true)
+                .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
                 .build();
     }
 

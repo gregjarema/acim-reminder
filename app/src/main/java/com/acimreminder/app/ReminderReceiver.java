@@ -48,10 +48,12 @@ public class ReminderReceiver extends BroadcastReceiver {
                 ctx, 4000 + hour, begin,
                 PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
 
+        // The lesson idea itself is the headline — no generic "Time to practice"
+        // line. BigTextStyle lets a long idea wrap fully when the notification
+        // is expanded.
         NotificationCompat.Builder b = new NotificationCompat.Builder(ctx, Notify.CH_REMINDERS)
                 .setSmallIcon(R.drawable.ic_stat_bell)
-                .setContentTitle("Time to practice")
-                .setContentText(phrase)
+                .setContentTitle(phrase)
                 .setStyle(new NotificationCompat.BigTextStyle().bigText(phrase))
                 .setCategory(NotificationCompat.CATEGORY_REMINDER)
                 .setPriority(NotificationCompat.PRIORITY_HIGH)
