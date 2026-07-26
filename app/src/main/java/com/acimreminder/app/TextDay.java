@@ -21,23 +21,26 @@ public final class TextDay {
         this.body = body;
     }
 
+    /**
+     * Marianne's labels are inconsistent about the separator — "Day 1: Ch. 1,
+     * Introduction" but "Day 440 Ch. 22, Section III (5-6)" — so both forms are
+     * split the same way: the leading "Day N" is the heading, the remainder is
+     * the citation. Splitting on the colon alone left the no-colon labels whole,
+     * which showed the citation twice.
+     */
+    private static final java.util.regex.Pattern LABEL_RE =
+            java.util.regex.Pattern.compile("^\\s*(Day\\s+\\d+)\\s*[:\\-–]?\\s*(.*)$",
+                    java.util.regex.Pattern.CASE_INSENSITIVE);
+
     /** "Day 158" — the short form, for the screen's headline. */
     public String shortTitle() {
-        int colon = label.indexOf(':');
-        String head = colon > 0 ? label.substring(0, colon) : label;
-        return head.trim().isEmpty() ? "Day " + number : head.trim();
+        java.util.regex.Matcher m = LABEL_RE.matcher(label);
+        return m.matches() ? m.group(1).trim() : "Day " + number;
     }
 
-    /**
-     * "Ch. 13, Section II (5-9)" — the citation that follows the day number.
-     * Marianne's labels are inconsistent about the colon ("Day 440 Ch. 22..."),
-     * so fall back to splitting on the first space after the number.
-     */
+    /** "Ch. 13, Section II (5-9)" — the citation, without repeating the day. */
     public String citation() {
-        int colon = label.indexOf(':');
-        if (colon > 0) return label.substring(colon + 1).trim();
-        java.util.regex.Matcher m =
-                java.util.regex.Pattern.compile("^Day\\s+\\d+\\s+(.*)$").matcher(label);
-        return m.matches() ? m.group(1).trim() : "";
+        java.util.regex.Matcher m = LABEL_RE.matcher(label);
+        return m.matches() ? m.group(2).trim() : "";
     }
 }

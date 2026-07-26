@@ -7,6 +7,14 @@
     <style name="Theme.AcimReminder" parent="@android:style/Theme.DeviceDefault.Light.NoActionBar">
         <item name="android:colorBackground">#F4F1EC</item>
         <item name="android:textViewStyle">@style/SelectableText</item>
+
+        <!-- We draw edge-to-edge on a cream background, so the system's default
+             white status-bar icons were invisible in daylight. These ask for the
+             dark-on-light treatment for the clock, battery and nav bar. -->
+        <item name="android:windowLightStatusBar">true</item>
+        <item name="android:windowLightNavigationBar">true</item>
+        <item name="android:statusBarColor">@android:color/transparent</item>
+        <item name="android:navigationBarColor">@android:color/transparent</item>
     </style>
 
     <!-- Text is selectable everywhere, so any passage can be long-pressed and
