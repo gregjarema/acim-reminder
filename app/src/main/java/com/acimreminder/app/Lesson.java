@@ -2,24 +2,63 @@ package com.acimreminder.app;
 
 /**
  * One workbook lesson. Loaded from assets/lessons.json by {@link Lessons}.
+ *
+ * Besides the text, each lesson carries the practice the workbook actually
+ * prescribes for that day — how long to sit, and how often — worked out by
+ * tools/parse_practice.py. It varies constantly, and some days ask for no
+ * sitting at all.
  */
 public final class Lesson {
+
+    /** How often to be reminded. */
+    public static final String KIND_HOURLY = "hourly";     // once an hour
+    public static final String KIND_INTERVAL = "interval"; // every N minutes
+    public static final String KIND_COUNT = "count";       // N times across the day
 
     public final int number;
     public final String title;      // "Lesson 100"
     public final String phrase;     // the one-line idea
-    public final String meditation; // fuller 1-2 line form of the idea, or "" — see tools/meditation.py
+    public final String meditation; // fuller 1-2 line form of the idea, or ""
     public final String video;      // Marianne video URL (may be empty)
     public final String body;       // full lesson text, paragraphs split by blank lines
 
+    /** Minutes to sit for. <b>0 means no timed practice</b> — just be reminded. */
+    public final int practiceMinutes;
+    /** One of {@link #KIND_HOURLY}, {@link #KIND_INTERVAL}, {@link #KIND_COUNT}. */
+    public final String practiceKind;
+    /** Minutes between reminders for INTERVAL; number of reminders for COUNT. */
+    public final int practiceValue;
+    /** The lines to hold during practice — the reminder's subtext. */
+    public final String meditationText;
+
     public Lesson(int number, String title, String phrase, String meditation,
-                  String video, String body) {
+                  String video, String body,
+                  int practiceMinutes, String practiceKind, int practiceValue,
+                  String meditationText) {
         this.number = number;
         this.title = title;
         this.phrase = phrase;
         this.meditation = meditation;
         this.video = video;
         this.body = body;
+        this.practiceMinutes = practiceMinutes;
+        this.practiceKind = practiceKind;
+        this.practiceValue = practiceValue;
+        this.meditationText = meditationText;
+    }
+
+    /** True when today asks you to sit for a while, rather than just remember. */
+    public boolean hasTimedPractice() {
+        return practiceMinutes > 0;
+    }
+
+    public long practiceMillis() {
+        return practiceMinutes * 60_000L;
+    }
+
+    /** "15-minute practice" / "5-minute practice" — for the Begin button. */
+    public String practiceLabel() {
+        return practiceMinutes + "-minute";
     }
 
     /**

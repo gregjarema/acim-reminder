@@ -4,6 +4,7 @@ import android.app.AlarmManager;
 import android.app.Notification;
 import android.app.PendingIntent;
 import android.app.Service;
+import android.content.Context;
 import android.content.Intent;
 import android.content.pm.ServiceInfo;
 import android.os.IBinder;
@@ -35,8 +36,18 @@ public class MeditationService extends Service {
     public static final String ACTION_END = "com.acimreminder.app.MEDITATE_END";
     public static final String ACTION_STOP = "com.acimreminder.app.MEDITATE_STOP";
 
-    /** Length of one session. Change this single number to make it shorter/longer. */
+    /**
+     * Fallback session length, used only when the day's lesson doesn't give one.
+     * The real length comes from the lesson — the workbook prescribes it, and it
+     * changes constantly. See {@link Lesson#practiceMillis()}.
+     */
     public static final long DURATION_MS = 5 * 60 * 1000L;
+
+    /** The length today's lesson asks for, falling back to {@link #DURATION_MS}. */
+    public static long durationFor(Context ctx) {
+        Lesson today = Lessons.today(ctx);
+        return today.hasTimedPractice() ? today.practiceMillis() : DURATION_MS;
+    }
 
     /**
      * Wall-clock end time of the running session (0 = none), in
@@ -68,7 +79,7 @@ public class MeditationService extends Service {
 
     private void handleStart() {
         Notify.ensureChannels(this);
-        long endTime = System.currentTimeMillis() + DURATION_MS;
+        long endTime = System.currentTimeMillis() + durationFor(this);
         getSharedPreferences(OnboardingActivity.PREFS, MODE_PRIVATE)
                 .edit().putLong(KEY_MEDITATION_END_AT, endTime).apply();
 

@@ -154,6 +154,17 @@
 
                     </FrameLayout>
 
+                    <!-- What the workbook actually asks for today: how long,
+                         how often — or that there's nothing to time at all. -->
+                    <TextView
+                        android:id="@+id/tvPractice"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="18dp"
+                        android:textSize="13sp"
+                        android:letterSpacing="0.06"
+                        android:textColor="#A08A63" />
+
                     <Button
                         android:id="@+id/btnBegin"
                         android:layout_width="match_parent"

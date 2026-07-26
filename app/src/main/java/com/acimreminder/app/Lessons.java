@@ -91,7 +91,11 @@ public final class Lessons {
                         o.getString("phrase"),
                         o.optString("meditation", ""),
                         o.optString("video", ""),
-                        o.getString("body")));
+                        o.getString("body"),
+                        o.optInt("practiceMinutes", 5),
+                        o.optString("practiceKind", Lesson.KIND_HOURLY),
+                        o.optInt("practiceValue", 1),
+                        o.optString("meditationText", "")));
             }
         } catch (Exception e) {
             // Never crash over content; an empty list is handled by callers.
@@ -109,7 +113,8 @@ public final class Lessons {
     public static Lesson forDate(Context ctx, LocalDate date) {
         List<Lesson> all = all(ctx);
         if (all.isEmpty()) {
-            return new Lesson(DAY_ONE_NUMBER, "Lesson " + DAY_ONE_NUMBER, "", "", "", "");
+            return new Lesson(DAY_ONE_NUMBER, "Lesson " + DAY_ONE_NUMBER, "", "", "", "",
+                    5, Lesson.KIND_HOURLY, 1, "");
         }
         int size = all.size();
 

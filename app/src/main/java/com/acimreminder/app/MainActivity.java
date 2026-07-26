@@ -15,6 +15,7 @@ import android.webkit.WebChromeClient;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
+import android.widget.Button;
 import android.widget.Chronometer;
 import android.widget.FrameLayout;
 import android.widget.ProgressBar;
@@ -255,6 +256,20 @@ public class MainActivity extends Activity {
         ((TextView) findViewById(R.id.tvSubtitle)).setText(today.ideaText());
         ((TextView) findViewById(R.id.tvBody)).setText(asHtml(today.body));
 
+        // The workbook sets the practice, and it changes constantly. Some days
+        // ask only that you remember the idea — on those, there's nothing to
+        // time, so the Begin button goes away rather than inventing a sitting.
+        Button begin = findViewById(R.id.btnBegin);
+        if (today.hasTimedPractice()) {
+            begin.setText("Begin " + today.practiceLabel() + " practice");
+            begin.setVisibility(chronoMeditation.getVisibility() == View.VISIBLE
+                    ? View.GONE : View.VISIBLE);
+        } else {
+            begin.setVisibility(View.GONE);
+        }
+        TextView practice = findViewById(R.id.tvPractice);
+        practice.setText(practiceSummary(today));
+
         // Only reset the video on an actual lesson change (a midnight rollover
         // while the app is open) — not on every resume, so simply switching
         // away and back doesn't interrupt something you're watching.
@@ -271,6 +286,24 @@ public class MainActivity extends Activity {
                         playInline(webView, R.id.btnVideo, R.id.videoBox, today.video));
             }
         }
+    }
+
+    /** A plain-English line describing what today actually asks of you. */
+    private String practiceSummary(Lesson l) {
+        String when;
+        if (Lesson.KIND_INTERVAL.equals(l.practiceKind)) {
+            when = l.practiceValue == 30 ? "every half hour"
+                    : "every " + l.practiceValue + " minutes";
+        } else if (Lesson.KIND_COUNT.equals(l.practiceKind)) {
+            when = l.practiceValue == 1 ? "once today"
+                    : l.practiceValue == 2 ? "morning and evening"
+                    : l.practiceValue + " times today";
+        } else {
+            when = "every hour";
+        }
+        return l.hasTimedPractice()
+                ? l.practiceMinutes + " minutes, " + when
+                : "Just remember the idea — " + when;
     }
 
     /**
@@ -407,7 +440,7 @@ public class MainActivity extends Activity {
         ContextCompat.startForegroundService(this, i);
         // The service persists this same end time; computing it here too (rather
         // than waiting on it) shows the countdown immediately with no lag.
-        showMeditationActive(System.currentTimeMillis() + MeditationService.DURATION_MS);
+        showMeditationActive(System.currentTimeMillis() + MeditationService.durationFor(this));
     }
 
     private void stopMeditation() {
@@ -447,7 +480,9 @@ public class MainActivity extends Activity {
         }
         chronoMeditation.stop();
         chronoMeditation.setVisibility(View.GONE);
-        findViewById(R.id.btnBegin).setVisibility(View.VISIBLE);
+        // Only bring Begin back if today actually has something to time.
+        findViewById(R.id.btnBegin).setVisibility(
+                Lessons.today(this).hasTimedPractice() ? View.VISIBLE : View.GONE);
     }
 
     // -------------------------------------------------------------- shared
