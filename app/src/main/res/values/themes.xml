@@ -28,4 +28,18 @@
     <style name="SelectableText" parent="@android:style/Widget.DeviceDefault.TextView">
         <item name="android:textIsSelectable">true</item>
     </style>
+
+    <!-- Menus and dialogs are chrome, not reading. Their rows are TextViews too,
+         so the theme above reached inside them and made every item selectable —
+         which means the item, not the list, takes the touch, and tapping one
+         does nothing at all. Wrapping their context in this overlay puts the
+         ordinary TextView style back for the popup only. parent="" keeps it an
+         overlay: everything not named here stays as the app theme has it. -->
+    <style name="ThemeOverlay.AcimReminder.Popup" parent="">
+        <item name="android:textViewStyle">@style/PlainText</item>
+    </style>
+
+    <style name="PlainText" parent="@android:style/Widget.DeviceDefault.TextView">
+        <item name="android:textIsSelectable">false</item>
+    </style>
 </resources>

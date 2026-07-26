@@ -180,8 +180,23 @@ public class MainActivity extends Activity implements Playback.Controller {
      * with the two you use daily. They're the same actions, just no longer in
      * the way; the menu is built per tab so it only offers what applies here.
      */
+    /**
+     * A context for menus and dialogs, with the app's selectable-text default
+     * turned back off.
+     *
+     * The theme makes every TextView selectable so any passage can be copied,
+     * and that reaches into popups too — where each row *is* a TextView. A
+     * selectable one takes the touch for itself instead of letting the list
+     * handle it, so the menu opened and nothing in it could be tapped. Same
+     * trap that once made Delete on a saved passage do nothing.
+     */
+    private android.content.Context popupContext() {
+        return new android.view.ContextThemeWrapper(
+                this, R.style.ThemeOverlay_AcimReminder_Popup);
+    }
+
     private void showOverflow(View anchor) {
-        android.widget.PopupMenu menu = new android.widget.PopupMenu(this, anchor);
+        android.widget.PopupMenu menu = new android.widget.PopupMenu(popupContext(), anchor);
         final int JUMP = 1, WALLPAPER = 2, COPY = 3;
 
         if (selectedTab == TAB_WORKBOOK) {
