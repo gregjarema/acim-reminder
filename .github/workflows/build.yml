@@ -48,7 +48,7 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           tag_name: build-${{ github.run_number }}
-          name: ACIM Reminder (build ${{ github.run_number }})
+          name: A Course in Miracles (build ${{ github.run_number }})
           body: |
             Debug build of the ACIM daily reminder app — the Workbook lesson
             and the daily Text reading, in two tabs.

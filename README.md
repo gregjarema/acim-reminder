@@ -1,4 +1,4 @@
-# ACIM Reminder
+# A Course in Miracles
 
 A small, personal Android app for practising *A Course in Miracles*, in two tabs:
 
@@ -19,15 +19,18 @@ sitting when you want to catch up.
 
 ## The workbook schedule
 
-The lessons live in `app/src/main/assets/lessons.json`. The date-to-lesson
-mapping is anchored in `Lessons.java`:
+The lessons live in `app/src/main/assets/lessons.json`.
 
-- `DAY_ONE` = the calendar day the sequence starts on (currently **2026-07-20**)
-- `DAY_ONE_NUMBER` = the lesson shown that day (**98**, so Lesson 99 falls on 2026-07-21)
+**You choose where to begin.** On first run the app asks: start at Lesson 1, or
+pick up wherever you already are. Whatever you choose becomes *today*, and the
+schedule advances one lesson per calendar day from there. Changed your mind, or
+mistapped? **Jump to lesson…** on the Workbook tab re-anchors it at any time.
 
-Each following day advances one lesson, and the list **cycles** — after Lesson
-365 it wraps back to Lesson 1, so the schedule never runs dry. **To shift the
-whole schedule by a day, change `DAY_ONE`.**
+The list **cycles** — after Lesson 365 it wraps back to Lesson 1, so the
+schedule never runs dry.
+
+`DAY_ONE` / `DAY_ONE_NUMBER` in `Lessons.java` are only the built-in fallback,
+used until you make that first choice.
 
 Day 1 is special: it shows the Workbook **Introduction and Lesson 1 together**,
 taken from Marianne's "Welcome" email.
@@ -130,21 +133,21 @@ time:
 
 ### 3. The one-time setup inside the app
 
-When you first open the app you'll see an **"One-time setup"** card with up to
-three buttons. Tap each one and accept:
+The app walks you through one step at a time, and won't let you skip:
 
 1. **Allow notifications** — so you can actually see the reminders and the
    countdown. Tap **Allow**.
-2. **Allow exact alarms** — so reminders fire at the exact minute. On most
-   phones this is already on (nothing to do); if the button appears, tap it and
-   enable **"Allow setting alarms and reminders."**
-3. **Stop battery-optimising this app** — so Android doesn't put the app to
-   sleep and swallow your reminders. Tap it and choose **Allow** / **Don't
-   optimise**.
+2. **Stop battery-optimising this app** — so Android doesn't put the app to
+   sleep and swallow your reminders. This prompt fires by itself; choose
+   **Allow** / **Don't optimise**.
+3. **Where to start** — begin at Lesson 1, or tap *"I'm further along"* and pick
+   the lesson you're actually on. That becomes today.
 
-When all three are done the card says **"Setup complete — you're all set."**
+Then you land on the lesson. Leave the app; the reminders start arriving on the
+hour.
 
-That's it. Leave the app; the reminders will start arriving on the hour.
+(Exact alarms need no prompt — the app holds `USE_EXACT_ALARM`, which Android
+grants at install.)
 
 > **Tip — bell volume:** the bells deliberately use your phone's **Alarm**
 > volume (not media volume), which is what lets the closing bell ring reliably

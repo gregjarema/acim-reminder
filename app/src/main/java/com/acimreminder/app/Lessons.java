@@ -28,12 +28,50 @@ import java.util.List;
  */
 public final class Lessons {
 
-    /** The calendar day on which the schedule starts... */
+    /**
+     * The built-in anchor, used only until you choose your own starting lesson
+     * on first run (or change it later from the Workbook tab).
+     */
     public static final LocalDate DAY_ONE = LocalDate.of(2026, 7, 20);
     /** ...and the lesson number shown on that day (20 Jul = 98, so 99 falls on 21 Jul). */
     public static final int DAY_ONE_NUMBER = 98;
 
+    /** Your chosen anchor: the day you set it, and the lesson you set it to. */
+    private static final String KEY_ANCHOR_EPOCH_DAY = "workbook_anchor_epoch_day";
+    private static final String KEY_ANCHOR_LESSON = "workbook_anchor_lesson";
+
     private static List<Lesson> cache;
+
+    /**
+     * Start the workbook at {@code lessonNumber} <em>today</em>, advancing one
+     * lesson per day from here. This is how "I'm already up to Lesson 140" is
+     * expressed: we re-anchor the calendar rather than storing a bookmark, so
+     * the workbook keeps its one-lesson-per-day rhythm either way.
+     */
+    public static void startFrom(Context ctx, int lessonNumber) {
+        ctx.getSharedPreferences(OnboardingActivity.PREFS, Context.MODE_PRIVATE)
+                .edit()
+                .putLong(KEY_ANCHOR_EPOCH_DAY, LocalDate.now().toEpochDay())
+                .putInt(KEY_ANCHOR_LESSON, lessonNumber)
+                .apply();
+    }
+
+    /** True once you've chosen a starting lesson yourself. */
+    public static boolean hasChosenStart(Context ctx) {
+        return ctx.getSharedPreferences(OnboardingActivity.PREFS, Context.MODE_PRIVATE)
+                .contains(KEY_ANCHOR_LESSON);
+    }
+
+    private static LocalDate anchorDate(Context ctx) {
+        long epochDay = ctx.getSharedPreferences(OnboardingActivity.PREFS, Context.MODE_PRIVATE)
+                .getLong(KEY_ANCHOR_EPOCH_DAY, Long.MIN_VALUE);
+        return epochDay == Long.MIN_VALUE ? DAY_ONE : LocalDate.ofEpochDay(epochDay);
+    }
+
+    private static int anchorNumber(Context ctx) {
+        return ctx.getSharedPreferences(OnboardingActivity.PREFS, Context.MODE_PRIVATE)
+                .getInt(KEY_ANCHOR_LESSON, DAY_ONE_NUMBER);
+    }
 
     public static synchronized List<Lesson> all(Context ctx) {
         if (cache != null) return cache;
@@ -75,15 +113,17 @@ public final class Lessons {
         }
         int size = all.size();
 
-        // Index of the anchor lesson (DAY_ONE_NUMBER) in the sorted list.
+        // Index of the anchor lesson — yours if you've chosen one, else the
+        // built-in default.
+        int anchor = anchorNumber(ctx);
         int startIdx = 0;
         for (int i = 0; i < size; i++) {
-            if (all.get(i).number == DAY_ONE_NUMBER) { startIdx = i; break; }
+            if (all.get(i).number == anchor) { startIdx = i; break; }
         }
 
         // Advance one lesson per day from the anchor, cycling round the list so
         // the schedule never runs dry (wraps back to the start after the last).
-        long offset = ChronoUnit.DAYS.between(DAY_ONE, date);
+        long offset = ChronoUnit.DAYS.between(anchorDate(ctx), date);
         long idx = (((startIdx + offset) % size) + size) % size;
         return all.get((int) idx);
     }

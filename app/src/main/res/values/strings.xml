@@ -1,4 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">ACIM Reminder</string>
+    <!-- Shown under the launcher icon and in Settings. The home screen truncates
+         long labels, so this lands as "A Course in…" there; the full name shows
+         in the app drawer, Settings, and the notification header. -->
+    <string name="app_name">A Course in Miracles</string>
 </resources>

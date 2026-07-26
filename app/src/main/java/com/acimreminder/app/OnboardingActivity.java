@@ -2,6 +2,7 @@ package com.acimreminder.app;
 
 import android.Manifest;
 import android.app.Activity;
+import android.app.AlertDialog;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.net.Uri;
@@ -16,6 +17,8 @@ import androidx.core.content.ContextCompat;
 import androidx.core.graphics.Insets;
 import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowInsetsCompat;
+
+import java.util.List;
 
 /**
  * First-run onboarding, one required step at a time — no skip:
@@ -33,6 +36,7 @@ public class OnboardingActivity extends Activity {
 
     private TextView tvHeading, tvBody;
     private Button btnAction;
+    private TextView btnSecondary;
     private boolean batteryPrompted = false;
     private boolean finished = false;
 
@@ -58,6 +62,8 @@ public class OnboardingActivity extends Activity {
         tvBody = findViewById(R.id.tvBody);
         btnAction = findViewById(R.id.btnAction);
         btnAction.setOnClickListener(v -> onAction());
+        btnSecondary = findViewById(R.id.btnSecondary);
+        btnSecondary.setOnClickListener(v -> chooseStartingLesson());
 
         render();
         // Kick off the notification request straight away on first entry.
@@ -77,6 +83,7 @@ public class OnboardingActivity extends Activity {
         if (finished) return;
 
         if (!hasNotifications()) {
+            btnSecondary.setVisibility(View.GONE);
             tvHeading.setText("Notifications");
             tvBody.setText("First, allow notifications so you can see each reminder and the live meditation countdown.");
             btnAction.setText("Allow notifications");
@@ -84,6 +91,7 @@ public class OnboardingActivity extends Activity {
         }
 
         if (!isBatteryUnrestricted()) {
+            btnSecondary.setVisibility(View.GONE);
             tvHeading.setText("One more step");
             tvBody.setText("Let the app ignore battery optimisation, so your reminders fire on time and the closing bell always rings — even overnight. Choose “Allow” / “Don't optimise” on the next screen.");
             btnAction.setText("Turn off battery optimisation");
@@ -95,6 +103,17 @@ public class OnboardingActivity extends Activity {
             return;
         }
 
+        // Last: where in the workbook to begin. Everything before this was a
+        // system permission prompt, so this is the first real choice you make.
+        if (!Lessons.hasChosenStart(this)) {
+            tvHeading.setText("Where to start");
+            tvBody.setText("The workbook runs one lesson a day, starting today and advancing at midnight.\n\nBegin at Lesson 1, or pick up wherever you already are.");
+            btnAction.setText("Start at Lesson 1");
+            btnSecondary.setVisibility(View.VISIBLE);
+            btnSecondary.setText("I'm further along — choose a lesson");
+            return;
+        }
+
         complete();
     }
 
@@ -103,9 +122,41 @@ public class OnboardingActivity extends Activity {
             requestNotifications();
         } else if (!isBatteryUnrestricted()) {
             requestIgnoreBatteryOptimisation();
+        } else if (!Lessons.hasChosenStart(this)) {
+            Lessons.startFrom(this, 1);
+            complete();
         } else {
             complete();
         }
+    }
+
+    /**
+     * The full lesson list, so someone mid-workbook can start where they
+     * actually are instead of clicking forward from Lesson 1.
+     */
+    private void chooseStartingLesson() {
+        final List<Lesson> all = Lessons.all(this);
+        if (all.isEmpty()) {          // no content shipped; don't strand the user
+            Lessons.startFrom(this, 1);
+            complete();
+            return;
+        }
+
+        final String[] labels = new String[all.size()];
+        for (int i = 0; i < all.size(); i++) {
+            Lesson l = all.get(i);
+            labels[i] = l.title + " — " + l.ideaHeadline();
+        }
+
+        new AlertDialog.Builder(this)
+                .setTitle("Start from which lesson?")
+                .setSingleChoiceItems(labels, 0, (dialog, which) -> {
+                    dialog.dismiss();
+                    Lessons.startFrom(this, all.get(which).number);
+                    complete();
+                })
+                .setNegativeButton("Cancel", null)
+                .show();
     }
 
     private void complete() {

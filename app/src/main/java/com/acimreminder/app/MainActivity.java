@@ -103,6 +103,8 @@ public class MainActivity extends Activity {
         chronoMeditation.setOnClickListener(v -> stopMeditation());
         findViewById(R.id.btnBegin).setOnClickListener(v -> beginMeditation());
 
+        findViewById(R.id.btnLessonJump).setOnClickListener(v -> showJumpToLessonDialog());
+
         findViewById(R.id.btnTextNext).setOnClickListener(v -> markTextRead());
         findViewById(R.id.btnTextPrev).setOnClickListener(v -> goToPreviousTextDay());
         findViewById(R.id.btnTextJump).setOnClickListener(v -> showJumpToDayDialog());
@@ -269,6 +271,37 @@ public class MainActivity extends Activity {
                         playInline(webView, R.id.btnVideo, R.id.videoBox, today.video));
             }
         }
+    }
+
+    /**
+     * Re-anchor the workbook so today is the lesson you pick, advancing daily
+     * from there. Unlike the Text's bookmark this moves the whole schedule —
+     * which is what you want whether you're correcting a first-run mistake or
+     * genuinely picking up at a different point.
+     */
+    private void showJumpToLessonDialog() {
+        final List<Lesson> all = Lessons.all(this);
+        if (all.isEmpty()) return;
+
+        final String[] labels = new String[all.size()];
+        int checked = 0;
+        int current = Lessons.today(this).number;
+        for (int i = 0; i < all.size(); i++) {
+            Lesson l = all.get(i);
+            labels[i] = l.title + " — " + l.ideaHeadline();
+            if (l.number == current) checked = i;
+        }
+
+        new AlertDialog.Builder(this)
+                .setTitle("Start today at…")
+                .setSingleChoiceItems(labels, checked, (dialog, which) -> {
+                    dialog.dismiss();
+                    Lessons.startFrom(this, all.get(which).number);
+                    bindToday();
+                    findViewById(R.id.workbookScroll).scrollTo(0, 0);
+                })
+                .setNegativeButton("Cancel", null)
+                .show();
     }
 
     // ------------------------------------------------------------ text tab
