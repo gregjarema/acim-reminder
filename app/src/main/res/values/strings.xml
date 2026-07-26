@@ -4,4 +4,7 @@
          long labels, so this lands as "A Course in…" there; the full name shows
          in the app drawer, Settings, and the notification header. -->
     <string name="app_name">A Course in Miracles</string>
+
+    <!-- Shown beside the wallpaper in Android's wallpaper picker. -->
+    <string name="wallpaper_description">Today\'s workbook lesson, on your home screen.</string>
 </resources>

@@ -2,6 +2,8 @@ package com.acimreminder.app;
 
 import android.app.Activity;
 import android.app.AlertDialog;
+import android.app.WallpaperManager;
+import android.content.ComponentName;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.os.Bundle;
@@ -105,6 +107,7 @@ public class MainActivity extends Activity {
         findViewById(R.id.btnBegin).setOnClickListener(v -> beginMeditation());
 
         findViewById(R.id.btnLessonJump).setOnClickListener(v -> showJumpToLessonDialog());
+        findViewById(R.id.btnWallpaper).setOnClickListener(v -> chooseWallpaper());
 
         findViewById(R.id.btnTextNext).setOnClickListener(v -> markTextRead());
         findViewById(R.id.btnTextPrev).setOnClickListener(v -> goToPreviousTextDay());
@@ -324,6 +327,27 @@ public class MainActivity extends Activity {
                 videoLink.setVisibility(View.VISIBLE);
                 videoLink.setOnClickListener(v ->
                         playInline(webView, R.id.btnVideo, R.id.videoBox, today.video));
+            }
+        }
+    }
+
+    /**
+     * Open Android's wallpaper preview on ours, so setting it is one tap rather
+     * than a hunt through Settings. Falls back to the general live-wallpaper
+     * picker on devices that don't honour the direct intent.
+     */
+    private void chooseWallpaper() {
+        Intent direct = new Intent(WallpaperManager.ACTION_CHANGE_LIVE_WALLPAPER)
+                .putExtra(WallpaperManager.EXTRA_LIVE_WALLPAPER_COMPONENT,
+                        new ComponentName(this, LessonWallpaperService.class));
+        try {
+            startActivity(direct);
+        } catch (Exception e) {
+            try {
+                startActivity(new Intent(WallpaperManager.ACTION_LIVE_WALLPAPER_CHOOSER));
+            } catch (Exception e2) {
+                Toast.makeText(this, "Couldn't open the wallpaper picker.",
+                        Toast.LENGTH_SHORT).show();
             }
         }
     }

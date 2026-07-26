@@ -55,6 +55,21 @@
             android:name=".OnboardingActivity"
             android:exported="false" />
 
+        <!-- Today's lesson as a live wallpaper. BIND_WALLPAPER means only the
+             system can bind to it, which Android requires for wallpapers. -->
+        <service
+            android:name=".LessonWallpaperService"
+            android:exported="true"
+            android:label="@string/app_name"
+            android:permission="android.permission.BIND_WALLPAPER">
+            <intent-filter>
+                <action android:name="android.service.wallpaper.WallpaperService" />
+            </intent-filter>
+            <meta-data
+                android:name="android.service.wallpaper"
+                android:resource="@xml/lesson_wallpaper" />
+        </service>
+
         <!-- The meditation timer + bells. mediaPlayback type = allowed to make
              sound in the background on Android 17. -->
         <service
