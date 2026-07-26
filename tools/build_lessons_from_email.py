@@ -37,6 +37,7 @@ WS = re.compile(r'\s+')
 I_OPEN = re.compile(r'<(?:i|em)\b[^>]*>', re.I)
 I_CLOSE = re.compile(r'</(?:i|em)\s*>', re.I)
 EMPTY_I = re.compile(r'<i>\s*</i>')
+BR = re.compile(r'<br\b[^>]*>', re.I)
 
 # Paragraphs at/after any of these mark the email footer — never part of a lesson.
 FOOTER = re.compile(
@@ -65,16 +66,33 @@ def clean(fragment):
 
 
 def clean_html(fragment):
-    """Like clean(), but keep italic emphasis as <i>...</i> for the app to render."""
+    """Like clean(), but keep italic emphasis as <i>...</i> for the app to render,
+    and a <br> as the line break it is."""
     s = I_OPEN.sub('\x01', fragment)
     s = I_CLOSE.sub('\x02', s)
+    # A <br> is a line break the email asked for — the verses are laid out with
+    # them — so it survives as \n, the same character the body already uses to
+    # separate paragraphs (one \n a line, two a paragraph). Marked first so the
+    # sweep below doesn't take it with the rest of the tags.
+    s = BR.sub('\x03', s)
     s = TAG.sub(' ', s)              # drop every other tag
     s = html.unescape(s)            # entities -> real characters
     # Re-escape so the stored string is valid HTML, then restore the italics.
     s = s.replace('&', '&amp;').replace('<', '&lt;').replace('>', '&gt;')
     s = s.replace('\x01', '<i>').replace('\x02', '</i>')
     s = EMPTY_I.sub('', s)
-    return WS.sub(' ', s).strip()
+    s = WS.sub(' ', s).strip()
+
+    # Not every <br> is a line. These emails also hard-wrap prose, which breaks
+    # mid-sentence — "Nothing outside of me can hold / me back". A line of verse
+    # ends where a clause ends, so a break with no punctuation before it is a
+    # wrap and rejoins; anything else stays a break.
+    def keep_break(m):
+        before = html.unescape(TAG.sub('', s[:m.start()])).rstrip()
+        return '\n' if before.endswith((',', '.', ';', ':', '!', '?', '—', '–')) else ' '
+
+    s = re.sub(r' *\x03 *', keep_break, s)
+    return WS.sub(lambda m: '\n' if '\n' in m.group(0) else ' ', s).strip('\n ')
 
 
 def decode_keap(url):

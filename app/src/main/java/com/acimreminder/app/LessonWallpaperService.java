@@ -158,11 +158,18 @@ public class LessonWallpaperService extends WallpaperService {
                     lesson.title.toUpperCase(), label, textWidth);
             StaticLayout ideaLayout = build(lesson.idea(), idea, textWidth);
 
-            // Sit the block slightly above centre: the lower half of a home
-            // screen is where icons and the dock live.
+            // Sit the block below the middle of the screen. It used to sit
+            // above it, which put it straight behind the media player's
+            // notification card on the lock screen — the lesson was there and
+            // unreadable exactly when something was playing.
+            //
+            // Measured from the top of the screen rather than as a share of the
+            // leftover space, so a long idea grows downward from the same place
+            // instead of dragging the whole block up.
             int gap = Math.round(18 * density);
             int block = labelLayout.getHeight() + gap + ideaLayout.getHeight();
-            float top = Math.max(margin, (height - block) * 0.38f);
+            float lowest = height - margin - block - gap * 2f;   // keep the rule on screen
+            float top = Math.max(margin, Math.min(height * 0.60f, lowest));
 
             canvas.save();
             canvas.translate(margin, top);

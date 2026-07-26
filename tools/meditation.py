@@ -78,7 +78,13 @@ def extract_meditation(body, phrase=""):
     confidently a complete, additive form of the phrase."""
     if not body:
         return ""
-    paras = [p for p in (_strip_tags(p) for p in body.split("\n\n")) if p]
+    # Paragraphs, then the lines within them. A verse is sometimes two
+    # paragraphs and sometimes one paragraph broken across two lines — the
+    # emails do both — and either way each line is a line of the verse.
+    paras = [line
+             for para in body.split("\n\n")
+             for line in (_strip_tags(para) or "").split("\n")
+             if line.strip()]
     for i, p in enumerate(paras):
         if not (p.endswith(':') and CUE.search(p[-45:].lower())):
             continue

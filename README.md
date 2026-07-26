@@ -41,6 +41,12 @@ taken from Marianne's "Welcome" email.
 italic passages). To rebuild after changing an email, rerun that script and
 commit.
 
+Line breaks inside a paragraph are kept, because the verses are laid out with
+them — Lesson 104's *"I seek but what belongs to me in truth, / And joy and
+peace are my inheritance."* is two lines, and reads as nonsense run together.
+But these emails also hard-wrap prose mid-sentence, so a break is only honoured
+where the text before it ends on punctuation; otherwise it rejoins.
+
 ---
 
 ## The daily Text
@@ -60,13 +66,22 @@ members.marianne.com scrape kept outside this repo in `~/Documents/ACIM/Text`.
 `python3 tools/build_text_days.py` turns it into
 `app/src/main/assets/text_days.json`.
 
-That script does one thing worth knowing about. Marianne's session videos are
-**unlisted**, so `vimeo.com/1040972397` on its own is a dead link — it only
-opens as `vimeo.com/1040972397/f69a55d4a3`, with the access hash. The scrape's
-`days_canonical.json` keeps only the bare id, so the script recovers each hash
-from the saved day pages in `.work/days_raw/`. That gives the Text videos the
-same two-part URL the Workbook lessons already use, which is why the same inline
-player handles both.
+That script leans on the saved day pages in `.work/days_raw/` for two things the
+canonical scrape dropped.
+
+**The video hash.** Marianne's session videos are **unlisted**, so
+`vimeo.com/1040972397` on its own is a dead link — it only opens as
+`vimeo.com/1040972397/f69a55d4a3`. `days_canonical.json` keeps only the bare id.
+Recovering the hash gives the Text videos the same two-part URL the Workbook
+lessons already use, which is why one inline player handles both.
+
+**The italics.** The scrape kept the words but not their emphasis, so
+T-18.I.6:9 arrived as "And above all, be not afraid of it" with the stress the
+Course itself puts on that line simply gone — 907 such runs across 365 days. The
+saved pages still mark them, sentence by sentence, so each run is lifted out and
+matched back onto the canonical sentence it came from. Where a stripped `<i>`
+had also swallowed the sentence number ("11*That* they have in common" saved as
+"11 That"), that number comes back too.
 
 As more sessions are transcribed, rerun the script and commit — the app clamps
 your stored day to whatever shipped, so a day that's out of range today simply
@@ -104,8 +119,15 @@ build it is running.
 Both tabs play Marianne's video inline. Everything about how that works is
 shaped by one constraint: **these videos are whitelisted to specific domains**,
 so Vimeo's embed player refuses to run anywhere else. The app therefore loads
-Vimeo's ordinary watch page in a WebView, and the page's own chrome is hidden
-afterwards by walking up from the player element and hiding its siblings.
+Vimeo's ordinary watch page in a WebView, and hides the page's own chrome
+afterwards by walking up from the `<video>` element and hiding its siblings.
+
+It hides a sibling only if it **doesn't overlap the picture**. Vimeo's own
+controls are a sibling that sits *on* the video, so hiding siblings outright
+took the play button with them, leaving the video controllable only from the
+phone's media controls. The header, sign-in bar and title all sit outside the
+picture and still go. The test is geometric rather than a list of Vimeo class
+names, which would rot at their next redesign.
 
 That constraint decides the rest:
 
@@ -116,9 +138,10 @@ That constraint decides the rest:
 - **Audio keeps playing** when you leave the app, because that service is of
   type `mediaPlayback`. Without one, Android may silence the app as soon as it
   leaves the screen.
-- **Listen only** hides the picture and keeps the sound. There's no audio-only
-  stream to switch to, so it shrinks the player to a 1px *invisible* box rather
-  than removing it — a WebView with no size stops playing altogether.
+
+There's no audio-only mode. The video has to load either way — there's no
+separate audio stream to switch to — so hiding the picture only ever moved it
+out of sight while it carried on. Leaving the app does the same thing.
 
 ---
 

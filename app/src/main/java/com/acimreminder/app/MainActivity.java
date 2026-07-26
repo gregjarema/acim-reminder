@@ -64,8 +64,8 @@ public class MainActivity extends Activity implements Playback.Controller {
 
     private WebView webView;          // Workbook player
     private WebView textWebView;      // Text player
-    /** Whichever player was last started, or null. Tracked explicitly because
-     *  "listen only" hides the box, so visibility can't answer this. */
+    /** Whichever player was last started, or null. What the media buttons and
+     *  the playback notification drive. */
     private WebView activePlayer;
     private FrameLayout fullscreenContainer;
     private View fullscreenView;
@@ -123,10 +123,6 @@ public class MainActivity extends Activity implements Playback.Controller {
         chronoMeditation.setOnClickListener(v -> stopMeditation());
         findViewById(R.id.btnBegin).setOnClickListener(v -> beginMeditation());
 
-        findViewById(R.id.btnListenOnly).setOnClickListener(
-                v -> toggleListenOnly(R.id.videoBox, R.id.btnListenOnly));
-        findViewById(R.id.btnTextListenOnly).setOnClickListener(
-                v -> toggleListenOnly(R.id.textVideoBox, R.id.btnTextListenOnly));
         Playback.setController(this);
 
         findViewById(R.id.btnTextNext).setOnClickListener(v -> markTextRead());
@@ -190,10 +186,10 @@ public class MainActivity extends Activity implements Playback.Controller {
 
         if (selectedTab == TAB_WORKBOOK) {
             menu.getMenu().add(Menu.NONE, JUMP, 0, "Jump to lesson…");
-            menu.getMenu().add(Menu.NONE, WALLPAPER, 1, "Set as wallpaper…");
+            menu.getMenu().add(Menu.NONE, WALLPAPER, 1, "Use the live wallpaper…");
         } else if (selectedTab == TAB_TEXT) {
             menu.getMenu().add(Menu.NONE, JUMP, 0, "Jump to day…");
-            menu.getMenu().add(Menu.NONE, WALLPAPER, 1, "Set as wallpaper…");
+            menu.getMenu().add(Menu.NONE, WALLPAPER, 1, "Use the live wallpaper…");
         } else {
             menu.getMenu().add(Menu.NONE, COPY, 0, "Copy all passages");
         }
@@ -296,25 +292,6 @@ public class MainActivity extends Activity implements Playback.Controller {
         TextDay d = TextDays.current(this);
         findViewById(R.id.btnTextVideo).setVisibility(
                 d == null || d.video.isEmpty() ? View.GONE : View.VISIBLE);
-        findViewById(R.id.btnListenOnly).setVisibility(View.GONE);
-        findViewById(R.id.btnTextListenOnly).setVisibility(View.GONE);
-    }
-
-    /**
-     * Hide the picture but keep the sound. There's no audio-only stream to
-     * switch to — the video plays inside Vimeo's page — so "listen only" means
-     * shrinking the player away while it carries on. The box is left INVISIBLE
-     * at 1px rather than GONE: a WebView with no size stops playing.
-     */
-    private void toggleListenOnly(int boxId, int toggleId) {
-        View box = findViewById(boxId);
-        TextView toggle = findViewById(toggleId);
-        boolean hiding = box.getVisibility() == View.VISIBLE;
-        box.setVisibility(hiding ? View.INVISIBLE : View.VISIBLE);
-        ViewGroup.LayoutParams lp = box.getLayoutParams();
-        lp.height = hiding ? 1 : Math.round(320 * getResources().getDisplayMetrics().density);
-        box.setLayoutParams(lp);
-        toggle.setText(hiding ? "Show video" : "Listen only");
     }
 
     // ------------------------------------------------------------- players
@@ -411,8 +388,6 @@ public class MainActivity extends Activity implements Playback.Controller {
             // moment the app leaves the screen.
             activePlayer = player;
             boolean isText = player == textWebView;
-            findViewById(isText ? R.id.btnTextListenOnly : R.id.btnListenOnly)
-                    .setVisibility(View.VISIBLE);
             TextDay day = TextDays.current(this);
             startPlaybackService(isText
                     ? (day == null ? "" : day.shortTitle())
@@ -427,24 +402,38 @@ public class MainActivity extends Activity implements Playback.Controller {
      *
      * We can't use Vimeo's embed URL — these videos are whitelisted to specific
      * domains, and the embed refuses to play anywhere else — so the plain watch
-     * page it is, chrome and all. This walks up from the player element and
-     * hides every sibling on the way to <body>, which leaves the player's own
-     * ancestor chain and nothing else. That's deliberately structural rather
-     * than a list of Vimeo class names, which would rot the moment they ship a
-     * redesign. If the player can't be found, nothing is hidden and you get the
-     * ordinary page — no worse than before.
+     * page it is, chrome and all. This walks up from the video and hides the
+     * siblings on the way to <body>.
+     *
+     * It hides a sibling only if it doesn't overlap the video. Vimeo's own
+     * controls are a sibling that sits ON the picture, so hiding siblings
+     * outright took the play button with them — which is what left the video
+     * playable only from the phone's media controls. The header, sign-in bar
+     * and title all sit outside the picture and still go.
+     *
+     * The test is geometric first, so it doesn't depend on Vimeo's class names
+     * surviving their next redesign. If the video can't be found or hasn't been
+     * laid out yet, nothing is hidden and a later pass tries again.
      */
     private void frameThePlayer(WebView v) {
         v.evaluateJavascript(
                 "(function(){try{"
                 + "var p=document.querySelector('video')"
-                + "||document.querySelector('iframe[src*=\"player.vimeo.com\"]')"
-                + "||document.querySelector('[class*=\"player\"]');"
+                + "||document.querySelector('iframe[src*=\"player.vimeo.com\"]');"
                 + "if(!p)return;"
-                + "var n=p.tagName==='VIDEO'?(p.closest('div')||p):p;"
-                + "while(n&&n!==document.body){var par=n.parentNode;if(par){"
+                + "var r=p.getBoundingClientRect();"
+                + "if(r.width<10||r.height<10)return;"
+                + "function over(el){var b=el.getBoundingClientRect();"
+                + "return b.width>0&&b.height>0&&b.left<r.right&&b.right>r.left"
+                + "&&b.top<r.bottom&&b.bottom>r.top;}"
+                // The class-name check is a second net under the geometry: a
+                // control bar faded right out could measure as nothing.
+                + "function keep(el){return over(el)"
+                + "||/control|ui|button|play|volume/i.test(String(el.className||''));}"
+                + "var n=p;"
+                + "while(n&&n!==document.body){var par=n.parentNode;if(par&&par.children){"
                 + "Array.prototype.forEach.call(par.children,function(s){"
-                + "if(s!==n)s.style.display='none';});}n=par;}"
+                + "if(s!==n&&!keep(s))s.style.display='none';});}n=par;}"
                 + "document.body.style.margin='0';"
                 + "document.documentElement.style.background='#000';"
                 + "window.scrollTo(0,0);"

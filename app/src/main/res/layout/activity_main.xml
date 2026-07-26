@@ -211,22 +211,6 @@
 
                     </FrameLayout>
 
-                    <TextView
-                        android:id="@+id/btnListenOnly"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:layout_marginTop="8dp"
-                        android:gravity="center"
-                        android:padding="10dp"
-                        android:text="Listen only"
-                        android:textSize="14sp"
-                        android:textColor="#7A6646"
-                        android:background="?android:attr/selectableItemBackground"
-                        android:clickable="true"
-                        android:focusable="true"
-                        android:textIsSelectable="false"
-                        android:visibility="gone" />
-
                     <!-- What the workbook actually asks for today: how long,
                          how often — or that there's nothing to time at all. -->
                     <TextView
@@ -366,22 +350,6 @@
                             android:layout_gravity="center" />
 
                     </FrameLayout>
-
-                    <TextView
-                        android:id="@+id/btnTextListenOnly"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:layout_marginTop="8dp"
-                        android:gravity="center"
-                        android:padding="10dp"
-                        android:text="Listen only"
-                        android:textSize="14sp"
-                        android:textColor="#7A6646"
-                        android:background="?android:attr/selectableItemBackground"
-                        android:clickable="true"
-                        android:focusable="true"
-                        android:textIsSelectable="false"
-                        android:visibility="gone" />
 
                     <!-- No meditation timer here: the Text is a reading, not a
                          practice. Instead, the controls that move your place. -->

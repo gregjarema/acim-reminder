@@ -23,3 +23,6 @@ __pycache__/
 
 # The signing keystore. CI writes it from a secret; it must never be committed.
 app/signing.jks
+
+# Scratch files the email converter writes while scoring a candidate.
+tools/.score_tmp/

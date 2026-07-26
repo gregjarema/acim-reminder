@@ -44,6 +44,20 @@ EMAILS = REPO / "emails"
 # link the parser recovers separately.
 KEEP = re.compile(r"(?is)^</?(?:em|strong|i|b|a)\b")
 
+# Stands in for a <br> while block structure is worked out, so a line break the
+# email actually asked for can't be confused with one that fell out of a <div>.
+BR = "\x0b"
+
+# Stamped on our own output so a later run can tell a converted email from a
+# hand-saved one and refresh it, rather than having to out-score itself.
+MARKER = "<!-- converted by tools/emails_from_eml.py -->"
+
+
+def is_ours(html: str) -> bool:
+    """True if this file was written by this script (the early runs predate the
+    marker, and are recognisable by the exact shell they emit)."""
+    return MARKER in html[:200] or html.startswith("<html><body>\n<p>")
+
 
 # The masthead and download blurbs around the lesson. These matter because one
 # of them reads "To play Lesson 104 directly from your computer" — and the
@@ -78,9 +92,20 @@ def to_paragraphs(html: str) -> str:
     """Rewrite a <div>/<br> email as one <p> per paragraph."""
     h = re.sub(r"(?is)<(script|style)[^>]*>.*?</\1>", " ", html)
 
-    # Block boundaries and line breaks become newlines; two newlines will end up
-    # meaning "new paragraph".
-    h = re.sub(r"(?i)<br[^>]*>", "\n", h)
+    # A <br> is kept as a <br>, rather than being flattened to a space.
+    #
+    # It was flattened before, and that cost the verses their shape: Lesson 104's
+    # "I seek but what belongs to me in truth, / And joy and peace are my
+    # inheritance." arrived as one run-on line. Promoting every <br> to a
+    # paragraph break instead goes too far the other way — the idea line wraps
+    # across a <br> in some emails, and Lesson 63 lost "through my forgiveness"
+    # off the end of its own title. So the break is neither dropped nor promoted:
+    # it survives as a line break inside the paragraph, and the verse can be read
+    # off it downstream.
+    #
+    # A sentinel rather than the tag itself, because block boundaries below also
+    # emit newlines and only the real <br>s should become line breaks.
+    h = re.sub(r"(?i)<br[^>]*>", BR, h)
     h = re.sub(r"(?i)</(div|p|tr|td|table|tbody|h[1-6]|li|ul|ol)>", "\n\n", h)
     h = re.sub(r"(?i)<(div|p|tr|td|table|tbody|h[1-6]|li|ul|ol)[^>]*>", "\n", h)
 
@@ -90,12 +115,18 @@ def to_paragraphs(html: str) -> str:
 
     h = re.sub(r"(?s)<[^>]+>", strip, h)
 
+    # A doubled <br> is a blank line, which is how these emails space paragraphs.
+    h = re.sub(rf"{BR}\s*{BR}[{BR}\s]*", "\n\n", h)
+
     out = []
     for block in re.split(r"\n\s*\n+", h):
         block = neutralise_boilerplate(block)
-        # A single newline inside a block was a soft break, not a paragraph.
+        # A newline here came from a block boundary, not a <br> — a wrapped
+        # source line, nothing the reader should see.
         text = re.sub(r"[ \t]*\n[ \t]*", " ", block)
+        text = re.sub(rf"[ \t]*{BR}[ \t]*", "<br>", text)
         text = re.sub(r"[ \t]{2,}", " ", text).strip()
+        text = re.sub(r"^(?:<br>)+|(?:<br>)+$", "", text).strip()
         if not text:
             continue
         # Blocks that are nothing but markup or whitespace add noise — unless
@@ -104,7 +135,7 @@ def to_paragraphs(html: str) -> str:
             if "<a " not in text:
                 continue
         out.append(f"<p>{text}</p>")
-    return "<html><body>\n" + "\n".join(out) + "\n</body></html>"
+    return MARKER + "\n<html><body>\n" + "\n".join(out) + "\n</body></html>"
 
 
 def convert_all() -> dict[int, str]:
@@ -193,7 +224,17 @@ def main() -> int:
         # its body parsed down to download links), and preferring the raw email
         # wherever divs outnumbered paragraphs *lost* italics on 24 lessons whose
         # older template mixes divs with perfectly good <p> paragraphs.
-        if score(html, n) > score(dest.read_text(encoding="utf-8", errors="replace"), n):
+        existing = dest.read_text(encoding="utf-8", errors="replace")
+        # A file we wrote ourselves is a cache of this conversion, not a rival
+        # source: refresh it so improvements to the converter actually land.
+        # Scoring it would compare the converter against its own older output,
+        # and a tie loses.
+        if is_ours(existing):
+            improved.append(n)
+            if args.apply:
+                dest.write_text(html, encoding="utf-8")
+            continue
+        if score(html, n) > score(existing, n):
             improved.append(n)
             if args.apply:
                 dest.write_text(html, encoding="utf-8")
