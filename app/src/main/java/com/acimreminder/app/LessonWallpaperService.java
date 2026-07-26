@@ -28,10 +28,36 @@ import java.time.temporal.ChronoUnit;
  */
 public class LessonWallpaperService extends WallpaperService {
 
-    private static final int BACKGROUND = 0xFFF4F1EC;  // the app's cream
+    // Two palettes. Light is the app's cream and ink; dark is a warm near-black
+    // rather than pure black, so it stays of a piece with the paper feel instead
+    // of looking like a different app after sunset.
+    private static final int BACKGROUND = 0xFFF4F1EC;
     private static final int INK = 0xFF1A1A1A;
     private static final int ACCENT = 0xFF7A6646;
     private static final int FAINT = 0xFFA08A63;
+
+    private static final int BACKGROUND_DARK = 0xFF15130F;
+    private static final int INK_DARK = 0xFFEDE6D9;
+    private static final int ACCENT_DARK = 0xFFC2A878;
+    private static final int FAINT_DARK = 0xFF9A8A6C;
+
+    /** Whichever engine is on screen, so a theme change can repaint it. */
+    private LessonEngine active;
+
+    @Override
+    public void onConfigurationChanged(android.content.res.Configuration newConfig) {
+        super.onConfigurationChanged(newConfig);
+        // Catches the switch happening while you're looking at the home screen;
+        // otherwise the repaint on visibility would only land next time you
+        // returned to it.
+        if (active != null) active.draw();
+    }
+
+    private boolean night() {
+        int mode = getResources().getConfiguration().uiMode
+                & android.content.res.Configuration.UI_MODE_NIGHT_MASK;
+        return mode == android.content.res.Configuration.UI_MODE_NIGHT_YES;
+    }
 
     @Override
     public Engine onCreateEngine() {
@@ -49,6 +75,7 @@ public class LessonWallpaperService extends WallpaperService {
         public void onVisibilityChanged(boolean nowVisible) {
             visible = nowVisible;
             if (visible) {
+                active = this;
                 draw();
             } else {
                 handler.removeCallbacks(midnightRedraw);
@@ -65,11 +92,13 @@ public class LessonWallpaperService extends WallpaperService {
         @Override
         public void onSurfaceDestroyed(SurfaceHolder holder) {
             visible = false;
+            if (active == this) active = null;
             handler.removeCallbacks(midnightRedraw);
         }
 
         @Override
         public void onDestroy() {
+            if (active == this) active = null;
             handler.removeCallbacks(midnightRedraw);
             super.onDestroy();
         }
@@ -100,7 +129,12 @@ public class LessonWallpaperService extends WallpaperService {
         }
 
         private void render(Canvas canvas) {
-            canvas.drawColor(BACKGROUND);
+            boolean dark = night();
+            int background = dark ? BACKGROUND_DARK : BACKGROUND;
+            int ink = dark ? INK_DARK : INK;
+            int accent = dark ? ACCENT_DARK : ACCENT;
+            int faint = dark ? FAINT_DARK : FAINT;
+            canvas.drawColor(background);
 
             Lesson lesson = Lessons.forDate(LessonWallpaperService.this, LocalDate.now());
             float density = getResources().getDisplayMetrics().density;
@@ -109,14 +143,14 @@ public class LessonWallpaperService extends WallpaperService {
 
             // "LESSON 104" — a quiet eyebrow above the idea itself.
             TextPaint label = new TextPaint(Paint.ANTI_ALIAS_FLAG);
-            label.setColor(FAINT);
+            label.setColor(faint);
             label.setTextSize(13 * density);
             label.setLetterSpacing(0.16f);
             label.setTypeface(Typeface.DEFAULT);
 
             // The idea, which is the point of the whole thing.
             TextPaint idea = new TextPaint(Paint.ANTI_ALIAS_FLAG);
-            idea.setColor(INK);
+            idea.setColor(ink);
             idea.setTextSize(28 * density);
             idea.setTypeface(Typeface.create(Typeface.SERIF, Typeface.ITALIC));
 
@@ -139,7 +173,7 @@ public class LessonWallpaperService extends WallpaperService {
 
             // A small rule under the idea, echoing the app's dividers.
             Paint rule = new Paint(Paint.ANTI_ALIAS_FLAG);
-            rule.setColor(ACCENT);
+            rule.setColor(accent);
             rule.setStrokeWidth(Math.max(1f, density));
             float ruleY = top + block + gap * 1.5f;
             canvas.drawLine(margin, ruleY, margin + 44 * density, ruleY, rule);
