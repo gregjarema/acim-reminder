@@ -16,11 +16,11 @@ public class BeginReceiver extends BroadcastReceiver {
 
     @Override
     public void onReceive(Context ctx, Intent intent) {
-        int hour = intent.getIntExtra(Scheduler.EXTRA_HOUR, -1);
-
-        // Clear the reminder notification that launched us.
-        if (hour >= 0) {
-            NotificationManagerCompat.from(ctx).cancel(ReminderReceiver.NOTIF_BASE + hour);
+        // Clear the reminder that launched us, so the countdown appears to
+        // replace it rather than stacking beneath it.
+        int notifId = intent.getIntExtra(ReminderReceiver.EXTRA_NOTIF_ID, -1);
+        if (notifId >= 0) {
+            NotificationManagerCompat.from(ctx).cancel(notifId);
         }
 
         Intent start = new Intent(ctx, MeditationService.class)

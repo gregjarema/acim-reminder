@@ -2,6 +2,7 @@ package com.acimreminder.app;
 
 import android.app.AlarmManager;
 import android.app.Notification;
+import android.app.NotificationManager;
 import android.app.PendingIntent;
 import android.app.Service;
 import android.content.Context;
@@ -79,6 +80,7 @@ public class MeditationService extends Service {
 
     private void handleStart() {
         Notify.ensureChannels(this);
+        clearReminders();
         long endTime = System.currentTimeMillis() + durationFor(this);
         getSharedPreferences(OnboardingActivity.PREFS, MODE_PRIVATE)
                 .edit().putLong(KEY_MEDITATION_END_AT, endTime).apply();
@@ -98,6 +100,24 @@ public class MeditationService extends Service {
         cancelEndAlarm();
         // Stop only once the closing bell has finished ringing.
         BellPlayer.play(this, R.raw.bell_end, this::finish);
+    }
+
+    /**
+     * Take down any practice reminders still on screen, so the countdown reads
+     * as replacing the nudge that prompted it rather than piling on top.
+     *
+     * Selected by channel, not by id: the reminder ids are derived from the
+     * slot's hour and minute and so span a wide range that other notifications
+     * sit inside. The channel is the one thing that says "this is a reminder".
+     */
+    private void clearReminders() {
+        NotificationManager nm = getSystemService(NotificationManager.class);
+        if (nm == null) return;
+        for (android.service.notification.StatusBarNotification sbn : nm.getActiveNotifications()) {
+            if (Notify.CH_REMINDERS.equals(sbn.getNotification().getChannelId())) {
+                nm.cancel(sbn.getId());
+            }
+        }
     }
 
     private void handleStop() {

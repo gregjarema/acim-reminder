@@ -14,8 +14,21 @@ import androidx.core.app.NotificationManagerCompat;
  */
 public class ReminderReceiver extends BroadcastReceiver {
 
-    /** Base notification id; each hour gets BASE + hour so they don't collide. */
+    /** Base notification id; each slot gets its own so they don't collide. */
     static final int NOTIF_BASE = 2000;
+
+    /** Carries the posted notification's id to "Begin", so it can clear it. */
+    static final String EXTRA_NOTIF_ID = "notif_id";
+
+    /**
+     * The id a slot's reminder is posted under. Slots are not always on the
+     * hour — a lesson asking for practice every half hour has two a hour — so
+     * the minute has to be part of the id, and anything wanting to cancel a
+     * reminder must compute it the same way.
+     */
+    static int notifId(int hour, int minute) {
+        return NOTIF_BASE + (hour >= 0 ? hour * 100 + minute : 0);
+    }
 
     @Override
     public void onReceive(Context ctx, Intent intent) {
@@ -33,7 +46,7 @@ public class ReminderReceiver extends BroadcastReceiver {
     }
 
     private void postReminder(Context ctx, int hour, int minute, boolean sitting) {
-        int notifId = NOTIF_BASE + (hour >= 0 ? hour * 100 + minute : 0);
+        int notifId = notifId(hour, minute);
         Lesson lesson = Lessons.today(ctx);
         // The heading is the lesson's own idea; the verse to hold during
         // practice goes beneath it. Conflating the two put the practice text
@@ -53,8 +66,11 @@ public class ReminderReceiver extends BroadcastReceiver {
                 PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
 
         // "Begin" starts the practice directly, without opening the app.
+        // Hand over the exact id rather than the hour: it is the one thing that
+        // has to match what we posted, and deriving it twice is how the two
+        // drifted apart when slots gained minutes.
         Intent begin = new Intent(ctx, BeginReceiver.class)
-                .putExtra(Scheduler.EXTRA_HOUR, hour);
+                .putExtra(EXTRA_NOTIF_ID, notifId);
         PendingIntent beginPi = PendingIntent.getBroadcast(
                 ctx, 40000 + slot, begin,
                 PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
