@@ -168,6 +168,15 @@ def find_frequency(text: str) -> tuple[str, int, str] | None:
     mention an hour.
     """
     sentences = re.split(r"(?<=[.!?])\s+", text)
+    # Review days end with bare labels -- "On the hour:", "On the half hour:" --
+    # naming which idea to repeat when. Those say how often to REMEMBER, not how
+    # long to sit, and reading them as the sitting turned Lesson 111 into
+    # seventeen five-minute sittings. Too short to be an instruction: skip them
+    # and let the sitting inherit.
+    # The label runs into the line it introduces ("On the hour:\n\nMiracles are
+    # seen in light."), so drop the label itself rather than the sentence.
+    sentences = [re.sub(r"(?i)\b(?:on|at) the (?:half[- ])?hour\s*:", " ", x)
+                 for x in sentences]
     with_duration = [s for s in sentences if "minute" in s.lower()]
     for group in (with_duration, sentences):
         for sentence in group:
