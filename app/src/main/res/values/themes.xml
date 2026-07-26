@@ -6,5 +6,18 @@
          and is padded clear of it in code. -->
     <style name="Theme.AcimReminder" parent="@android:style/Theme.DeviceDefault.Light.NoActionBar">
         <item name="android:colorBackground">#F4F1EC</item>
+        <item name="android:textViewStyle">@style/SelectableText</item>
+    </style>
+
+    <!-- Text is selectable everywhere, so any passage can be long-pressed and
+         copied. Applied through the theme rather than per-view so it holds for
+         the lesson, the reading, and anything added later.
+
+         Selectable text also becomes focusable, which would swallow taps on the
+         TextViews we use as buttons (the tabs, the "Watch" links, the countdown,
+         Previous/Jump). Those set android:textIsSelectable="false" in the layout
+         to opt back out. -->
+    <style name="SelectableText" parent="@android:style/Widget.DeviceDefault.TextView">
+        <item name="android:textIsSelectable">true</item>
     </style>
 </resources>

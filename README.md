@@ -1,17 +1,23 @@
 # ACIM Reminder
 
-A small, personal Android app that reminds you to pause and practice your
-*A Course in Miracles* workbook lesson, and runs a gentle 5-minute meditation
-with a soft bell at the start and end.
+A small, personal Android app for practising *A Course in Miracles*, in two tabs:
 
-It follows a **per-day schedule** across the **complete 365-lesson workbook**:
-each calendar day shows that day's lesson — with Marianne Williamson's video
-playing right in the app and the lesson text (italic emphasis preserved) —
-advancing automatically at midnight and cycling round the year.
+- **Workbook** — reminds you to pause and practice the day's workbook lesson,
+  and runs a gentle 5-minute meditation with a soft bell at the start and end.
+- **Text** — Marianne Williamson's daily Text sessions, read at your own pace.
+
+Both tabs play Marianne's video right in the app, and text everywhere is
+selectable, so you can long-press any passage to copy it.
+
+The two sides keep time differently, on purpose. The Workbook is **pinned to the
+calendar** — one lesson per day, advancing at midnight, whether or not you open
+it. The Text **waits for you** — it stays on the day you're up to until you mark
+it read, so falling behind costs you nothing, and you can read three in one
+sitting when you want to catch up.
 
 ---
 
-## The daily schedule
+## The workbook schedule
 
 The lessons live in `app/src/main/assets/lessons.json`. The date-to-lesson
 mapping is anchored in `Lessons.java`:
@@ -34,6 +40,37 @@ commit.
 
 ---
 
+## The daily Text
+
+The Text tab has **no schedule at all** — just a stored bookmark. It opens on
+whatever day you were last on, and moves only when you tell it to:
+
+- **Mark read** advances one day. Tap it three times and you've read three.
+- **Previous** steps back, to re-read.
+- **Jump to day…** opens the whole list, scrolled to where you are, so you can
+  go anywhere without clicking through 400+ days.
+
+Your place survives closing the app, rebooting, and installing a new build.
+
+**How the Text list is built:** the readings come from the authoritative
+members.marianne.com scrape kept outside this repo in `~/Documents/ACIM/Text`.
+`python3 tools/build_text_days.py` turns it into
+`app/src/main/assets/text_days.json`.
+
+That script does one thing worth knowing about. Marianne's session videos are
+**unlisted**, so `vimeo.com/1040972397` on its own is a dead link — it only
+opens as `vimeo.com/1040972397/f69a55d4a3`, with the access hash. The scrape's
+`days_canonical.json` keeps only the bare id, so the script recovers each hash
+from the saved day pages in `.work/days_raw/`. That gives the Text videos the
+same two-part URL the Workbook lessons already use, which is why the same inline
+player handles both.
+
+As more sessions are transcribed, rerun the script and commit — the app clamps
+your stored day to whatever shipped, so a day that's out of range today simply
+becomes reachable once it lands.
+
+---
+
 ## What it does
 
 - **Reminders:** every hour on the hour from **06:00 to 22:00** (17 times a day)
@@ -53,6 +90,12 @@ commit.
   in whichever place is in front of you — and the bell rings again at the
   end, even if your screen is off and your phone is idle. Tap the countdown
   in the app to stop early.
+- **The Text tab:** the day you're up to, with Marianne's session video playing
+  inline the same way, and the reading below it — headings, paragraph numbers
+  and the FIP sentence numbers as superscripts. No timer here, and no
+  notifications: the Text is there when you want it.
+- **Copy anything:** text is selectable throughout, so you can long-press a
+  passage in either tab and copy it out.
 
 ---
 
@@ -66,7 +109,7 @@ cloud (GitHub Actions) and posted as a downloadable file (a "Release").
 1. On your phone, open this repository on GitHub.
 2. On the right-hand side (or under the "⋯" menu) tap **Releases**.
    Direct link: `https://github.com/theexperiencelab/acim-reminder/releases/latest`
-3. Under the newest release, find the file **`acim-reminder-lesson99.apk`** and
+3. Under the newest release, find the file **`acim-reminder.apk`** and
    tap it. It downloads to your phone.
 
 ### 2. Allow installing it
@@ -74,7 +117,7 @@ cloud (GitHub Actions) and posted as a downloadable file (a "Release").
 Because this isn't from the Play Store, Android will ask permission the first
 time:
 
-1. Open the downloaded `acim-reminder-lesson99.apk` (tap it in your notifications
+1. Open the downloaded `acim-reminder.apk` (tap it in your notifications
    or in **Files → Downloads**).
 2. Android says it can't install from this source → tap **Settings**.
 3. Turn on **Allow from this source** (this is the "install unknown apps"
@@ -162,8 +205,11 @@ platform is published, bumping the target to 37 is a one-line change.
 
 ```
 app/src/main/java/com/acimreminder/app/
-  MainActivity.java       the single screen: lesson text, Begin, setup card
-  Lesson.java             the hardcoded Lesson 99 text
+  MainActivity.java       the single screen, in two tabs: Workbook and Text
+  Lesson.java             one workbook lesson
+  Lessons.java            loads lessons.json; maps calendar dates to lessons
+  TextDay.java            one day of the Text reading
+  TextDays.java           loads text_days.json; remembers the day you're on
   Scheduler.java          arms the 16 daily reminder alarms
   ReminderReceiver.java   posts each hourly lesson reminder notification
   BeginReceiver.java      the notification's Begin button
@@ -172,7 +218,10 @@ app/src/main/java/com/acimreminder/app/
   EndBellReceiver.java    the exact alarm that fires the closing bell
   BootReceiver.java       re-arms reminders after a reboot
   Notify.java             notification channels
+app/src/main/assets/      lessons.json (workbook) + text_days.json (Text)
 app/src/main/res/raw/     the two bell sounds
+tools/finalize_lessons.py builds lessons.json from the saved lesson emails
+tools/build_text_days.py  builds text_days.json from the ACIM/Text scrape
 .github/workflows/build.yml   builds the APK and posts the Release
 ```
 

@@ -6,7 +6,6 @@ name: Build APK
 on:
   push:
     branches:
-      - "claude/acim-daily-reminder-app-0s6s5z"
       - main
   workflow_dispatch:   # lets you trigger a build by hand from the Actions tab
 
@@ -42,19 +41,20 @@ jobs:
       - name: Give the APK a friendly name
         run: |
           mkdir -p out
-          cp app/build/outputs/apk/debug/app-debug.apk out/acim-reminder-lesson99.apk
+          cp app/build/outputs/apk/debug/app-debug.apk out/acim-reminder.apk
           ls -la out
 
       - name: Publish the APK to a Release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: lesson99-build-${{ github.run_number }}
-          name: ACIM Reminder - Lesson 99 (build ${{ github.run_number }})
+          tag_name: build-${{ github.run_number }}
+          name: ACIM Reminder (build ${{ github.run_number }})
           body: |
-            Debug build of the ACIM daily reminder app (Lesson 99).
+            Debug build of the ACIM daily reminder app — the Workbook lesson
+            and the daily Text reading, in two tabs.
 
-            **Install on your phone:** tap `acim-reminder-lesson99.apk` below to
+            **Install on your phone:** tap `acim-reminder.apk` below to
             download, then open it to install. See the README for the one-time
             "install unknown apps" and permission steps.
           make_latest: true
-          files: out/acim-reminder-lesson99.apk
+          files: out/acim-reminder.apk

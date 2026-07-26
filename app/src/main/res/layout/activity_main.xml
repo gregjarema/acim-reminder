@@ -3,131 +3,366 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent">
 
-    <ScrollView
+    <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:fillViewport="true">
+        android:orientation="vertical">
 
+        <!-- Two tabs: the calendar-driven Workbook lesson, and the Text reading
+             that waits for you. Hand-rolled rather than a TabLayout so we don't
+             have to pull in the Material Components library. -->
         <LinearLayout
-            android:id="@+id/content"
+            android:id="@+id/tabBar"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:orientation="vertical"
-            android:padding="24dp">
+            android:orientation="horizontal"
+            android:background="#F4F1EC">
 
-            <TextView
-                android:id="@+id/tvTitle"
-                android:layout_width="wrap_content"
+            <LinearLayout
+                android:id="@+id/tabWorkbook"
+                android:layout_width="0dp"
+                android:layout_weight="1"
                 android:layout_height="wrap_content"
-                android:text="Lesson 99"
-                android:textSize="30sp"
-                android:textColor="#1A1A1A"
-                android:fontFamily="serif" />
-
-            <TextView
-                android:id="@+id/tvSubtitle"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="6dp"
-                android:text="Salvation is my only function here."
-                android:textSize="20sp"
-                android:textStyle="italic"
-                android:textColor="#7A6646"
-                android:fontFamily="serif" />
-
-            <TextView
-                android:id="@+id/btnVideo"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="14dp"
-                android:text="▶  Watch today's lesson video"
-                android:textSize="15sp"
-                android:textColor="#7A6646"
-                android:clickable="true"
-                android:focusable="true"
-                android:paddingTop="4dp"
-                android:paddingBottom="4dp" />
-
-            <!-- Plays inline, right above the lesson text, so you can watch (or
-                 just listen) while reading along. Hidden until btnVideo is tapped. -->
-            <FrameLayout
-                android:id="@+id/videoBox"
-                android:layout_width="match_parent"
-                android:layout_height="320dp"
-                android:layout_marginTop="14dp"
-                android:background="#000000"
-                android:visibility="gone">
-
-                <WebView
-                    android:id="@+id/webView"
-                    android:layout_width="match_parent"
-                    android:layout_height="match_parent" />
-
-                <ProgressBar
-                    android:id="@+id/videoProgress"
-                    style="?android:attr/progressBarStyleLarge"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:layout_gravity="center" />
-
-            </FrameLayout>
-
-            <Button
-                android:id="@+id/btnBegin"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="20dp"
-                android:text="Begin 5-minute meditation"
-                android:textAllCaps="false"
-                android:textSize="17sp" />
-
-            <!-- Mirrors the same live countdown shown in the notification, so
-                 you can see it in whichever place is in front of you. Hidden
-                 until Begin is tapped; tap it to stop early. -->
-            <Chronometer
-                android:id="@+id/chronoMeditation"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="20dp"
-                android:padding="14dp"
-                android:gravity="center"
-                android:textSize="18sp"
-                android:textColor="#7A6646"
+                android:orientation="vertical"
                 android:background="?android:attr/selectableItemBackground"
                 android:clickable="true"
-                android:focusable="true"
-                android:visibility="gone" />
+                android:focusable="true">
 
-            <View
-                android:layout_width="match_parent"
-                android:layout_height="1dp"
-                android:layout_marginTop="24dp"
-                android:layout_marginBottom="20dp"
-                android:background="#E9E2D4" />
+                <TextView
+                    android:id="@+id/tabWorkbookLabel"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:gravity="center"
+                    android:paddingTop="14dp"
+                    android:paddingBottom="12dp"
+                    android:text="Workbook"
+                    android:textSize="15sp"
+                    android:letterSpacing="0.04"
+                    android:textIsSelectable="false" />
 
-            <TextView
-                android:id="@+id/tvLessonHeader"
-                android:layout_width="wrap_content"
+                <View
+                    android:id="@+id/tabWorkbookUnderline"
+                    android:layout_width="match_parent"
+                    android:layout_height="2dp"
+                    android:background="#7A6646" />
+            </LinearLayout>
+
+            <LinearLayout
+                android:id="@+id/tabText"
+                android:layout_width="0dp"
+                android:layout_weight="1"
                 android:layout_height="wrap_content"
-                android:text="THE LESSON"
-                android:textSize="12sp"
-                android:letterSpacing="0.16"
-                android:textColor="#A08A63" />
+                android:orientation="vertical"
+                android:background="?android:attr/selectableItemBackground"
+                android:clickable="true"
+                android:focusable="true">
 
-            <TextView
-                android:id="@+id/tvBody"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="12dp"
-                android:textSize="17sp"
-                android:lineSpacingMultiplier="1.5"
-                android:textColor="#1E1E1E"
-                android:fontFamily="serif" />
+                <TextView
+                    android:id="@+id/tabTextLabel"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:gravity="center"
+                    android:paddingTop="14dp"
+                    android:paddingBottom="12dp"
+                    android:text="Text"
+                    android:textSize="15sp"
+                    android:letterSpacing="0.04"
+                    android:textIsSelectable="false" />
 
+                <View
+                    android:id="@+id/tabTextUnderline"
+                    android:layout_width="match_parent"
+                    android:layout_height="2dp"
+                    android:background="#E9E2D4" />
+            </LinearLayout>
         </LinearLayout>
-    </ScrollView>
 
-    <!-- Full-screen overlay for the player's own fullscreen button. -->
+        <FrameLayout
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_weight="1">
+
+            <!-- ==================== WORKBOOK ==================== -->
+            <ScrollView
+                android:id="@+id/workbookScroll"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:fillViewport="true">
+
+                <LinearLayout
+                    android:id="@+id/content"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:padding="24dp">
+
+                    <TextView
+                        android:id="@+id/tvTitle"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Lesson 99"
+                        android:textSize="30sp"
+                        android:textColor="#1A1A1A"
+                        android:fontFamily="serif" />
+
+                    <TextView
+                        android:id="@+id/tvSubtitle"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="6dp"
+                        android:text="Salvation is my only function here."
+                        android:textSize="20sp"
+                        android:textStyle="italic"
+                        android:textColor="#7A6646"
+                        android:fontFamily="serif" />
+
+                    <TextView
+                        android:id="@+id/btnVideo"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="14dp"
+                        android:text="▶  Watch today's lesson video"
+                        android:textSize="15sp"
+                        android:textColor="#7A6646"
+                        android:clickable="true"
+                        android:focusable="true"
+                        android:textIsSelectable="false"
+                        android:paddingTop="4dp"
+                        android:paddingBottom="4dp" />
+
+                    <!-- Plays inline, right above the lesson text, so you can watch (or
+                         just listen) while reading along. Hidden until btnVideo is tapped. -->
+                    <FrameLayout
+                        android:id="@+id/videoBox"
+                        android:layout_width="match_parent"
+                        android:layout_height="320dp"
+                        android:layout_marginTop="14dp"
+                        android:background="#000000"
+                        android:visibility="gone">
+
+                        <WebView
+                            android:id="@+id/webView"
+                            android:layout_width="match_parent"
+                            android:layout_height="match_parent" />
+
+                        <ProgressBar
+                            android:id="@+id/videoProgress"
+                            style="?android:attr/progressBarStyleLarge"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_gravity="center" />
+
+                    </FrameLayout>
+
+                    <Button
+                        android:id="@+id/btnBegin"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="20dp"
+                        android:text="Begin 5-minute meditation"
+                        android:textAllCaps="false"
+                        android:textSize="17sp" />
+
+                    <!-- Mirrors the same live countdown shown in the notification, so
+                         you can see it in whichever place is in front of you. Hidden
+                         until Begin is tapped; tap it to stop early. -->
+                    <Chronometer
+                        android:id="@+id/chronoMeditation"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="20dp"
+                        android:padding="14dp"
+                        android:gravity="center"
+                        android:textSize="18sp"
+                        android:textColor="#7A6646"
+                        android:background="?android:attr/selectableItemBackground"
+                        android:clickable="true"
+                        android:focusable="true"
+                        android:textIsSelectable="false"
+                        android:visibility="gone" />
+
+                    <View
+                        android:layout_width="match_parent"
+                        android:layout_height="1dp"
+                        android:layout_marginTop="24dp"
+                        android:layout_marginBottom="20dp"
+                        android:background="#E9E2D4" />
+
+                    <TextView
+                        android:id="@+id/tvLessonHeader"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="THE LESSON"
+                        android:textSize="12sp"
+                        android:letterSpacing="0.16"
+                        android:textColor="#A08A63" />
+
+                    <TextView
+                        android:id="@+id/tvBody"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="12dp"
+                        android:textSize="17sp"
+                        android:lineSpacingMultiplier="1.5"
+                        android:textColor="#1E1E1E"
+                        android:fontFamily="serif" />
+
+                </LinearLayout>
+            </ScrollView>
+
+            <!-- ==================== DAILY TEXT ==================== -->
+            <ScrollView
+                android:id="@+id/textScroll"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:fillViewport="true"
+                android:visibility="gone">
+
+                <LinearLayout
+                    android:id="@+id/textContent"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:padding="24dp">
+
+                    <TextView
+                        android:id="@+id/tvTextTitle"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Day 1"
+                        android:textSize="30sp"
+                        android:textColor="#1A1A1A"
+                        android:fontFamily="serif" />
+
+                    <TextView
+                        android:id="@+id/tvTextCitation"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="6dp"
+                        android:text="Ch. 1, Introduction"
+                        android:textSize="20sp"
+                        android:textStyle="italic"
+                        android:textColor="#7A6646"
+                        android:fontFamily="serif" />
+
+                    <TextView
+                        android:id="@+id/btnTextVideo"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="14dp"
+                        android:text="▶  Watch this session"
+                        android:textSize="15sp"
+                        android:textColor="#7A6646"
+                        android:clickable="true"
+                        android:focusable="true"
+                        android:textIsSelectable="false"
+                        android:paddingTop="4dp"
+                        android:paddingBottom="4dp" />
+
+                    <FrameLayout
+                        android:id="@+id/textVideoBox"
+                        android:layout_width="match_parent"
+                        android:layout_height="320dp"
+                        android:layout_marginTop="14dp"
+                        android:background="#000000"
+                        android:visibility="gone">
+
+                        <WebView
+                            android:id="@+id/textWebView"
+                            android:layout_width="match_parent"
+                            android:layout_height="match_parent" />
+
+                        <ProgressBar
+                            android:id="@+id/textVideoProgress"
+                            style="?android:attr/progressBarStyleLarge"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_gravity="center" />
+
+                    </FrameLayout>
+
+                    <!-- No meditation timer here: the Text is a reading, not a
+                         practice. Instead, the controls that move your place. -->
+                    <Button
+                        android:id="@+id/btnTextNext"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="20dp"
+                        android:text="Mark read — on to Day 2"
+                        android:textAllCaps="false"
+                        android:textSize="17sp" />
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="10dp"
+                        android:orientation="horizontal">
+
+                        <TextView
+                            android:id="@+id/btnTextPrev"
+                            android:layout_width="0dp"
+                            android:layout_weight="1"
+                            android:layout_height="wrap_content"
+                            android:gravity="center"
+                            android:padding="12dp"
+                            android:text="◀  Previous"
+                            android:textSize="15sp"
+                            android:textColor="#7A6646"
+                            android:background="?android:attr/selectableItemBackground"
+                            android:clickable="true"
+                            android:focusable="true"
+                            android:textIsSelectable="false" />
+
+                        <TextView
+                            android:id="@+id/btnTextJump"
+                            android:layout_width="0dp"
+                            android:layout_weight="1"
+                            android:layout_height="wrap_content"
+                            android:gravity="center"
+                            android:padding="12dp"
+                            android:text="Jump to day…"
+                            android:textSize="15sp"
+                            android:textColor="#7A6646"
+                            android:background="?android:attr/selectableItemBackground"
+                            android:clickable="true"
+                            android:focusable="true"
+                            android:textIsSelectable="false" />
+                    </LinearLayout>
+
+                    <View
+                        android:layout_width="match_parent"
+                        android:layout_height="1dp"
+                        android:layout_marginTop="24dp"
+                        android:layout_marginBottom="20dp"
+                        android:background="#E9E2D4" />
+
+                    <TextView
+                        android:id="@+id/tvTextHeader"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="THE READING"
+                        android:textSize="12sp"
+                        android:letterSpacing="0.16"
+                        android:textColor="#A08A63" />
+
+                    <TextView
+                        android:id="@+id/tvTextBody"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="12dp"
+                        android:textSize="17sp"
+                        android:lineSpacingMultiplier="1.5"
+                        android:textColor="#1E1E1E"
+                        android:fontFamily="serif" />
+
+                </LinearLayout>
+            </ScrollView>
+
+        </FrameLayout>
+    </LinearLayout>
+
+    <!-- Full-screen overlay for the player's own fullscreen button, shared by
+         both tabs' players. -->
     <FrameLayout
         android:id="@+id/fullscreenContainer"
         android:layout_width="match_parent"

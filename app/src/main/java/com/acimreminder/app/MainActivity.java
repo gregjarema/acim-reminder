@@ -1,6 +1,7 @@
 package com.acimreminder.app;
 
 import android.app.Activity;
+import android.app.AlertDialog;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.os.Bundle;
@@ -25,18 +26,40 @@ import androidx.core.graphics.Insets;
 import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowInsetsCompat;
 
+import java.util.List;
+
 /**
- * The app's one screen: today's lesson, an inline video player you can read
- * alongside, and a Begin button. First-run permissions live in
- * {@link OnboardingActivity}, so this screen stays clean.
+ * The app's one screen, in two tabs.
+ *
+ * <b>Workbook</b> — today's lesson, pinned to the calendar, with the inline
+ * video and the 5-minute meditation.
+ *
+ * <b>Text</b> — Marianne's Text sessions, which advance only when you say so.
+ * Same inline player, no meditation timer: it's a reading, not a practice.
+ *
+ * First-run permissions live in {@link OnboardingActivity}, so this screen
+ * stays clean.
  */
 public class MainActivity extends Activity {
 
-    private WebView webView;
+    /** Which tab you were last on, so reopening the app lands where you left. */
+    private static final String KEY_TAB = "selected_tab";
+    private static final int TAB_WORKBOOK = 0;
+    private static final int TAB_TEXT = 1;
+
+    private static final int SELECTED = 0xFF7A6646;   // the app's brown
+    private static final int UNSELECTED = 0xFF9A9086;
+    private static final int RULE = 0xFFE9E2D4;       // the faint divider line
+
+    private WebView webView;          // Workbook player
+    private WebView textWebView;      // Text player
     private FrameLayout fullscreenContainer;
     private View fullscreenView;
     private WebChromeClient.CustomViewCallback fullscreenCallback;
+
     private int boundLessonNumber = -1;
+    private int boundTextDay = -1;
+    private int selectedTab = TAB_WORKBOOK;
 
     private Chronometer chronoMeditation;
     private final Handler mainHandler = new Handler(Looper.getMainLooper());
@@ -56,22 +79,38 @@ public class MainActivity extends Activity {
         setContentView(R.layout.activity_main);
         Notify.ensureChannels(this);
 
-        // The system draws us edge-to-edge, so pad the content clear of the
-        // status bar (top) and navigation bar (bottom).
-        final View content = findViewById(R.id.content);
+        // The system draws us edge-to-edge. The tab bar is pinned at the top, so
+        // it takes the status-bar inset; each scrolling pane takes the navigation
+        // -bar inset at the bottom so the last line of text clears it.
+        final View tabBar = findViewById(R.id.tabBar);
         final int pad = Math.round(24 * getResources().getDisplayMetrics().density);
-        ViewCompat.setOnApplyWindowInsetsListener(content, (v, insets) -> {
+        ViewCompat.setOnApplyWindowInsetsListener(tabBar, (v, insets) -> {
             Insets bars = insets.getInsets(WindowInsetsCompat.Type.systemBars());
-            v.setPadding(pad, pad + bars.top, pad, pad + bars.bottom);
+            v.setPadding(0, bars.top, 0, 0);
+            findViewById(R.id.content).setPadding(pad, pad, pad, pad + bars.bottom);
+            findViewById(R.id.textContent).setPadding(pad, pad, pad, pad + bars.bottom);
             return insets;
         });
 
-        setUpVideoPlayer();
+        webView = setUpVideoPlayer(R.id.webView, R.id.videoProgress);
+        textWebView = setUpVideoPlayer(R.id.textWebView, R.id.textVideoProgress);
+        fullscreenContainer = findViewById(R.id.fullscreenContainer);
+
+        findViewById(R.id.tabWorkbook).setOnClickListener(v -> selectTab(TAB_WORKBOOK));
+        findViewById(R.id.tabText).setOnClickListener(v -> selectTab(TAB_TEXT));
+
         chronoMeditation = findViewById(R.id.chronoMeditation);
         chronoMeditation.setOnClickListener(v -> stopMeditation());
         findViewById(R.id.btnBegin).setOnClickListener(v -> beginMeditation());
+
+        findViewById(R.id.btnTextNext).setOnClickListener(v -> markTextRead());
+        findViewById(R.id.btnTextPrev).setOnClickListener(v -> goToPreviousTextDay());
+        findViewById(R.id.btnTextJump).setOnClickListener(v -> showJumpToDayDialog());
+
         bindToday();
+        bindTextDay();
         refreshMeditationState();
+        selectTab(prefs().getInt(KEY_TAB, TAB_WORKBOOK));
 
         // Arm today's reminders now, and again every time the app is opened.
         Scheduler.scheduleAll(this);
@@ -86,34 +125,65 @@ public class MainActivity extends Activity {
         }
     }
 
-    private void setUpVideoPlayer() {
-        webView = findViewById(R.id.webView);
-        fullscreenContainer = findViewById(R.id.fullscreenContainer);
-        ProgressBar progress = findViewById(R.id.videoProgress);
+    // ---------------------------------------------------------------- tabs
 
-        WebSettings settings = webView.getSettings();
+    private void selectTab(int tab) {
+        // If a build ships without Text content the tab is hidden, so never
+        // restore onto it.
+        if (tab == TAB_TEXT && findViewById(R.id.tabText).getVisibility() != View.VISIBLE) {
+            tab = TAB_WORKBOOK;
+        }
+        selectedTab = tab;
+        prefs().edit().putInt(KEY_TAB, tab).apply();
+
+        boolean workbook = tab == TAB_WORKBOOK;
+        findViewById(R.id.workbookScroll).setVisibility(workbook ? View.VISIBLE : View.GONE);
+        findViewById(R.id.textScroll).setVisibility(workbook ? View.GONE : View.VISIBLE);
+
+        ((TextView) findViewById(R.id.tabWorkbookLabel)).setTextColor(workbook ? SELECTED : UNSELECTED);
+        ((TextView) findViewById(R.id.tabTextLabel)).setTextColor(workbook ? UNSELECTED : SELECTED);
+        findViewById(R.id.tabWorkbookUnderline).setBackgroundColor(workbook ? SELECTED : RULE);
+        findViewById(R.id.tabTextUnderline).setBackgroundColor(workbook ? RULE : SELECTED);
+
+        // Leaving a tab stops whatever was playing in it, so switching away
+        // doesn't leave Marianne talking from a hidden pane.
+        pausePlayer(workbook ? textWebView : webView);
+    }
+
+    /** Silence a hidden player without tearing down the page it has loaded. */
+    private void pausePlayer(WebView player) {
+        if (player != null) player.onPause();
+    }
+
+    // ------------------------------------------------------------- players
+
+    private WebView setUpVideoPlayer(int webViewId, int progressId) {
+        WebView view = findViewById(webViewId);
+        ProgressBar progress = findViewById(progressId);
+
+        WebSettings settings = view.getSettings();
         settings.setJavaScriptEnabled(true);
         settings.setDomStorageEnabled(true);
         settings.setMediaPlaybackRequiresUserGesture(false);
 
-        webView.setWebViewClient(new WebViewClient());
-        webView.setWebChromeClient(new WebChromeClient() {
+        view.setWebViewClient(new WebViewClient());
+        view.setWebChromeClient(new WebChromeClient() {
             @Override
-            public void onProgressChanged(WebView view, int newProgress) {
+            public void onProgressChanged(WebView v, int newProgress) {
                 progress.setVisibility(newProgress >= 100 ? View.GONE : View.VISIBLE);
             }
 
             // Vimeo's player asks for HTML5 fullscreen via JS; without handling
             // this the fullscreen button in the embed silently does nothing.
             @Override
-            public void onShowCustomView(View view, CustomViewCallback callback) {
+            public void onShowCustomView(View v, CustomViewCallback callback) {
                 if (fullscreenView != null) {
                     callback.onCustomViewHidden();
                     return;
                 }
-                fullscreenView = view;
+                fullscreenView = v;
                 fullscreenCallback = callback;
-                fullscreenContainer.addView(view, new FrameLayout.LayoutParams(
+                fullscreenContainer.addView(v, new FrameLayout.LayoutParams(
                         ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
                 fullscreenContainer.setVisibility(View.VISIBLE);
             }
@@ -123,6 +193,7 @@ public class MainActivity extends Activity {
                 hideFullscreen();
             }
         });
+        return view;
     }
 
     private void hideFullscreen() {
@@ -138,60 +209,162 @@ public class MainActivity extends Activity {
     public void onBackPressed() {
         if (fullscreenView != null) {
             hideFullscreen();
+        } else if (selectedTab == TAB_TEXT) {
+            selectTab(TAB_WORKBOOK);   // Back out of the Text tab before leaving
         } else {
             super.onBackPressed();
         }
     }
+
+    /**
+     * Load a video right above the reading so you can watch and read together.
+     * This loads the plain vimeo.com watch page as-is rather than rewriting it
+     * to the player.vimeo.com iframe-embed URL: these videos are locked to
+     * specific whitelisted domains for third-party embedding, so the embed URL
+     * hits Vimeo's "this video cannot be played here" privacy error. The plain
+     * vimeo.com page is Vimeo's own site, not a third-party embed, so only the
+     * link's own access hash matters there — it just plays. Both the Workbook
+     * lessons and the Text sessions carry that hash in their URL.
+     */
+    private void playInline(WebView player, int linkId, int boxId, String url) {
+        try {
+            findViewById(linkId).setVisibility(View.GONE);
+            findViewById(boxId).setVisibility(View.VISIBLE);
+            player.onResume();
+            player.loadUrl(url);
+        } catch (Exception e) {
+            Toast.makeText(this, "Couldn't play the video.", Toast.LENGTH_SHORT).show();
+        }
+    }
+
+    /** Collapse a player back to its "Watch" link and stop it loading. */
+    private void resetPlayer(WebView player, int linkId, int boxId) {
+        hideFullscreen();
+        findViewById(boxId).setVisibility(View.GONE);
+        player.loadUrl("about:blank");
+    }
+
+    // -------------------------------------------------------- workbook tab
 
     /** Show today's scheduled lesson. */
     private void bindToday() {
         Lesson today = Lessons.today(this);
         ((TextView) findViewById(R.id.tvTitle)).setText(today.title);
         ((TextView) findViewById(R.id.tvSubtitle)).setText(today.ideaText());
-        // The body carries italic emphasis (quoted Course passages, prayers) as
-        // <i> tags; paragraph breaks are blank lines. Render both as HTML.
-        String bodyHtml = today.body == null ? "" :
-                today.body.replace("\n\n", "<br><br>").replace("\n", "<br>");
-        ((TextView) findViewById(R.id.tvBody))
-                .setText(Html.fromHtml(bodyHtml, Html.FROM_HTML_MODE_COMPACT));
+        ((TextView) findViewById(R.id.tvBody)).setText(asHtml(today.body));
 
         // Only reset the video on an actual lesson change (a midnight rollover
         // while the app is open) — not on every resume, so simply switching
         // away and back doesn't interrupt something you're watching.
         if (today.number != boundLessonNumber) {
             boundLessonNumber = today.number;
-            hideFullscreen();
-            findViewById(R.id.videoBox).setVisibility(View.GONE);
-            webView.loadUrl("about:blank");
+            resetPlayer(webView, R.id.btnVideo, R.id.videoBox);
 
             View videoLink = findViewById(R.id.btnVideo);
             if (today.video == null || today.video.isEmpty()) {
                 videoLink.setVisibility(View.GONE);
             } else {
                 videoLink.setVisibility(View.VISIBLE);
-                videoLink.setOnClickListener(v -> playInline(today.video));
+                videoLink.setOnClickListener(v ->
+                        playInline(webView, R.id.btnVideo, R.id.videoBox, today.video));
             }
         }
     }
 
-    /**
-     * Load the video right above the lesson text so you can watch and read
-     * together. This loads the plain vimeo.com watch page as-is rather than
-     * rewriting it to the player.vimeo.com iframe-embed URL: these videos are
-     * locked to specific whitelisted domains for third-party embedding, so the
-     * embed URL hits Vimeo's "this video cannot be played here" privacy error.
-     * The plain vimeo.com page is Vimeo's own site, not a third-party embed,
-     * so only the link's own access hash matters there — it just plays.
-     */
-    private void playInline(String url) {
-        try {
-            findViewById(R.id.btnVideo).setVisibility(View.GONE);
-            findViewById(R.id.videoBox).setVisibility(View.VISIBLE);
-            webView.loadUrl(url);
-        } catch (Exception e) {
-            Toast.makeText(this, "Couldn't play the video.", Toast.LENGTH_SHORT).show();
+    // ------------------------------------------------------------ text tab
+
+    /** Show the Text day you're up to — wherever you left off, whenever that was. */
+    private void bindTextDay() {
+        TextDay day = TextDays.current(this);
+        if (day == null) {
+            // No Text content shipped in this build; hide the tab entirely
+            // rather than showing an empty screen.
+            findViewById(R.id.tabText).setVisibility(View.GONE);
+            return;
+        }
+
+        ((TextView) findViewById(R.id.tvTextTitle)).setText(day.shortTitle());
+
+        TextView citation = findViewById(R.id.tvTextCitation);
+        citation.setText(day.citation());
+        citation.setVisibility(day.citation().isEmpty() ? View.GONE : View.VISIBLE);
+
+        ((TextView) findViewById(R.id.tvTextBody)).setText(asHtml(day.body));
+
+        // "Mark read" is the primary action; at the end of what's transcribed
+        // so far, say so instead of offering a day that doesn't exist yet.
+        TextView next = findViewById(R.id.btnTextNext);
+        boolean hasNext = TextDays.hasNext(this);
+        next.setEnabled(hasNext);
+        next.setText(hasNext
+                ? "Mark read — on to Day " + (day.number + 1)
+                : "Day " + day.number + " — the latest session so far");
+
+        View prev = findViewById(R.id.btnTextPrev);
+        prev.setEnabled(TextDays.hasPrevious(this));
+        prev.setAlpha(TextDays.hasPrevious(this) ? 1f : 0.4f);
+
+        if (day.number != boundTextDay) {
+            boundTextDay = day.number;
+            resetPlayer(textWebView, R.id.btnTextVideo, R.id.textVideoBox);
+
+            View videoLink = findViewById(R.id.btnTextVideo);
+            if (day.video == null || day.video.isEmpty()) {
+                videoLink.setVisibility(View.GONE);
+            } else {
+                videoLink.setVisibility(View.VISIBLE);
+                videoLink.setOnClickListener(v ->
+                        playInline(textWebView, R.id.btnTextVideo, R.id.textVideoBox, day.video));
+            }
         }
     }
+
+    private void markTextRead() {
+        if (TextDays.advance(this)) {
+            bindTextDay();
+            findViewById(R.id.textScroll).scrollTo(0, 0);
+        }
+    }
+
+    private void goToPreviousTextDay() {
+        if (TextDays.goBack(this)) {
+            bindTextDay();
+            findViewById(R.id.textScroll).scrollTo(0, 0);
+        }
+    }
+
+    /**
+     * Jump straight to any session. With 400+ days, clicking through from
+     * wherever you left off isn't an option — this opens the full list at your
+     * current place, so you can go back to re-read or skip ahead freely.
+     */
+    private void showJumpToDayDialog() {
+        final List<TextDay> all = TextDays.all(this);
+        if (all.isEmpty()) return;
+
+        final String[] labels = new String[all.size()];
+        int checked = 0;
+        int current = TextDays.currentNumber(this);
+        for (int i = 0; i < all.size(); i++) {
+            labels[i] = all.get(i).label;
+            if (all.get(i).number == current) checked = i;
+        }
+
+        // setSingleChoiceItems opens the list scrolled to the checked row, which
+        // is what makes this usable at this length.
+        new AlertDialog.Builder(this)
+                .setTitle("Jump to day")
+                .setSingleChoiceItems(labels, checked, (dialog, which) -> {
+                    TextDays.setCurrent(this, all.get(which).number);
+                    bindTextDay();
+                    findViewById(R.id.textScroll).scrollTo(0, 0);
+                    dialog.dismiss();
+                })
+                .setNegativeButton("Cancel", null)
+                .show();
+    }
+
+    // --------------------------------------------------------- meditation
 
     private void beginMeditation() {
         // The app is visible, so this foreground service starts with full
@@ -212,8 +385,7 @@ public class MainActivity extends Activity {
 
     /** Mirror whatever the notification is currently showing — active or not. */
     private void refreshMeditationState() {
-        SharedPreferences prefs = getSharedPreferences(OnboardingActivity.PREFS, MODE_PRIVATE);
-        long endAt = prefs.getLong(MeditationService.KEY_MEDITATION_END_AT, 0);
+        long endAt = prefs().getLong(MeditationService.KEY_MEDITATION_END_AT, 0);
         if (endAt > System.currentTimeMillis()) {
             showMeditationActive(endAt);
         } else {
@@ -245,10 +417,28 @@ public class MainActivity extends Activity {
         findViewById(R.id.btnBegin).setVisibility(View.VISIBLE);
     }
 
+    // -------------------------------------------------------------- shared
+
+    /**
+     * Both bodies carry emphasis as HTML — the Workbook's italic Course
+     * quotations, the Text's bold headings and sentence-number superscripts —
+     * with paragraphs separated by blank lines.
+     */
+    private CharSequence asHtml(String body) {
+        if (body == null) return "";
+        String html = body.replace("\n\n", "<br><br>").replace("\n", "<br>");
+        return Html.fromHtml(html, Html.FROM_HTML_MODE_COMPACT);
+    }
+
+    private SharedPreferences prefs() {
+        return getSharedPreferences(OnboardingActivity.PREFS, MODE_PRIVATE);
+    }
+
     @Override
     protected void onDestroy() {
         mainHandler.removeCallbacksAndMessages(null);
         if (webView != null) webView.destroy();
+        if (textWebView != null) textWebView.destroy();
         super.onDestroy();
     }
 }
