@@ -44,6 +44,7 @@ def load_module(name, filename):
 
 b = load_module("b", "build_lessons_from_email.py")
 bd = load_module("bd", "build_lessons.py")
+med = load_module("med", "meditation.py")
 
 
 def valid(lesson):
@@ -93,12 +94,15 @@ def first_nonempty(num, field):
 
 merged = {}
 for num in set(emailed) | set(digest) | set(base):
+    phrase = first_nonempty(num, "phrase")
+    body = first_nonempty(num, "body")
     merged[num] = {
         "number": num,
         "title": first_nonempty(num, "title") or f"Lesson {num}",
-        "phrase": first_nonempty(num, "phrase"),
+        "phrase": phrase,
+        "meditation": med.extract_meditation(body, phrase),
         "video": first_nonempty(num, "video"),
-        "body": first_nonempty(num, "body"),
+        "body": body,
     }
 
 out = [merged[num] for num in sorted(merged)]

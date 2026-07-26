@@ -147,7 +147,7 @@ public class MainActivity extends Activity {
     private void bindToday() {
         Lesson today = Lessons.today(this);
         ((TextView) findViewById(R.id.tvTitle)).setText(today.title);
-        ((TextView) findViewById(R.id.tvSubtitle)).setText(today.phrase);
+        ((TextView) findViewById(R.id.tvSubtitle)).setText(today.ideaText());
         // The body carries italic emphasis (quoted Course passages, prayers) as
         // <i> tags; paragraph breaks are blank lines. Render both as HTML.
         String bodyHtml = today.body == null ? "" :

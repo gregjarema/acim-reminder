@@ -147,7 +147,9 @@ public class MeditationService extends Service {
         // widget uses (not wall-clock), so convert from endTime. Collapsed uses
         // a compact clock that fits; expanded uses a big one.
         long base = SystemClock.elapsedRealtime() + (endTime - System.currentTimeMillis());
-        String phrase = Lessons.today(this).phrase;
+        // The fuller two-line verse when the lesson has one, so the couplet you're
+        // holding stays in front of you for the whole sitting.
+        String idea = Lessons.today(this).ideaText();
 
         RemoteViews small = new RemoteViews(getPackageName(), R.layout.notif_meditation_collapsed);
         small.setChronometer(R.id.notif_chrono, base, null, true);
@@ -156,7 +158,7 @@ public class MeditationService extends Service {
         RemoteViews big = new RemoteViews(getPackageName(), R.layout.notif_meditation_big);
         big.setChronometer(R.id.notif_chrono, base, null, true);
         big.setChronometerCountDown(R.id.notif_chrono, true);
-        big.setTextViewText(R.id.notif_phrase, phrase);
+        big.setTextViewText(R.id.notif_phrase, idea);
 
         // Not setSilent(true): a silent notification is filed under the hidden
         // "silent" section and disappears from the lock screen. The channel
@@ -181,7 +183,7 @@ public class MeditationService extends Service {
         return new NotificationCompat.Builder(this, Notify.CH_MEDITATION)
                 .setSmallIcon(R.drawable.ic_stat_bell)
                 .setContentTitle("Practice complete")
-                .setContentText(Lessons.today(this).phrase)
+                .setContentText(Lessons.today(this).ideaHeadline())
                 .setOngoing(false)
                 .setOnlyAlertOnce(true)
                 .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)

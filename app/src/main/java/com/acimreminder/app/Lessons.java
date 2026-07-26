@@ -51,6 +51,7 @@ public final class Lessons {
                         o.getInt("number"),
                         o.getString("title"),
                         o.getString("phrase"),
+                        o.optString("meditation", ""),
                         o.optString("video", ""),
                         o.getString("body")));
             }
@@ -70,7 +71,7 @@ public final class Lessons {
     public static Lesson forDate(Context ctx, LocalDate date) {
         List<Lesson> all = all(ctx);
         if (all.isEmpty()) {
-            return new Lesson(DAY_ONE_NUMBER, "Lesson " + DAY_ONE_NUMBER, "", "", "");
+            return new Lesson(DAY_ONE_NUMBER, "Lesson " + DAY_ONE_NUMBER, "", "", "", "");
         }
         int size = all.size();
 

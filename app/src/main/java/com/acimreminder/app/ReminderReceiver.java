@@ -32,7 +32,12 @@ public class ReminderReceiver extends BroadcastReceiver {
 
     private void postReminder(Context ctx, int hour) {
         int notifId = NOTIF_BASE + (hour >= 0 ? hour : 0);
-        String phrase = Lessons.today(ctx).phrase;
+        Lesson lesson = Lessons.today(ctx);
+        // The headline is the idea itself; when the lesson gives a fuller two-line
+        // form to meditate on, the second line becomes the body — so the reminder
+        // offers the whole verse instead of repeating one line twice.
+        String headline = lesson.ideaHeadline();
+        String rest = lesson.ideaRest();
 
         // Tapping the body opens the app to the full lesson.
         Intent open = new Intent(ctx, MainActivity.class)
@@ -49,17 +54,22 @@ public class ReminderReceiver extends BroadcastReceiver {
                 PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
 
         // The lesson idea itself is the headline — no generic "Time to practice"
-        // line. BigTextStyle lets a long idea wrap fully when the notification
-        // is expanded.
+        // line. A two-line idea puts its second line in the body (and expands via
+        // BigTextStyle); a one-line idea just wraps.
         NotificationCompat.Builder b = new NotificationCompat.Builder(ctx, Notify.CH_REMINDERS)
                 .setSmallIcon(R.drawable.ic_stat_bell)
-                .setContentTitle(phrase)
-                .setStyle(new NotificationCompat.BigTextStyle().bigText(phrase))
+                .setContentTitle(headline)
                 .setCategory(NotificationCompat.CATEGORY_REMINDER)
                 .setPriority(NotificationCompat.PRIORITY_HIGH)
                 .setAutoCancel(true)
                 .setContentIntent(openPi)
                 .addAction(R.drawable.ic_stat_bell, "Begin", beginPi);
+        if (!rest.isEmpty()) {
+            b.setContentText(rest);
+            b.setStyle(new NotificationCompat.BigTextStyle().bigText(rest));
+        } else {
+            b.setStyle(new NotificationCompat.BigTextStyle().bigText(headline));
+        }
 
         try {
             NotificationManagerCompat.from(ctx).notify(notifId, b.build());

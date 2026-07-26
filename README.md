@@ -37,8 +37,10 @@ commit.
 ## What it does
 
 - **Reminders:** every hour on the hour from **06:00 to 22:00** (17 times a day)
-  your phone shows a notification whose headline *is* the line of *today's*
-  lesson.
+  your phone shows a notification whose headline *is* the idea of *today's*
+  lesson. Where the lesson gives a fuller two-line form to hold during practice
+  (e.g. Lesson 104's *"I seek but what belongs to me in truth, / And joy and
+  peace are my inheritance."*), the reminder offers the whole verse.
 - **Begin button on the notification:** starts the 5-minute meditation straight
   away, without opening the app.
 - **Tap the notification itself:** opens the app to the full lesson, with a
