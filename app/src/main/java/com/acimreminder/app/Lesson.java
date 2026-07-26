@@ -28,13 +28,20 @@ public final class Lesson {
     public final String practiceKind;
     /** Minutes between reminders for INTERVAL; number of reminders for COUNT. */
     public final int practiceValue;
+    /**
+     * Whether the lesson <em>also</em> asks to be recalled every hour, on top of
+     * its sittings. The workbook often prescribes both — "the time you give
+     * morning and evening... and the hourly remembrances you make throughout
+     * the day" — so these are two tracks, not one.
+     */
+    public final boolean hourlyRemembrance;
     /** The lines to hold during practice — the reminder's subtext. */
     public final String meditationText;
 
     public Lesson(int number, String title, String phrase, String meditation,
                   String video, String body,
                   int practiceMinutes, String practiceKind, int practiceValue,
-                  String meditationText) {
+                  boolean hourlyRemembrance, String meditationText) {
         this.number = number;
         this.title = title;
         this.phrase = phrase;
@@ -44,6 +51,7 @@ public final class Lesson {
         this.practiceMinutes = practiceMinutes;
         this.practiceKind = practiceKind;
         this.practiceValue = practiceValue;
+        this.hourlyRemembrance = hourlyRemembrance;
         this.meditationText = meditationText;
     }
 

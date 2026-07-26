@@ -95,6 +95,7 @@ public final class Lessons {
                         o.optInt("practiceMinutes", 5),
                         o.optString("practiceKind", Lesson.KIND_HOURLY),
                         o.optInt("practiceValue", 1),
+                        o.optBoolean("hourlyRemembrance", false),
                         o.optString("meditationText", "")));
             }
         } catch (Exception e) {
@@ -114,7 +115,7 @@ public final class Lessons {
         List<Lesson> all = all(ctx);
         if (all.isEmpty()) {
             return new Lesson(DAY_ONE_NUMBER, "Lesson " + DAY_ONE_NUMBER, "", "", "", "",
-                    5, Lesson.KIND_HOURLY, 1, "");
+                    5, Lesson.KIND_HOURLY, 1, false, "");
         }
         int size = all.size();
 

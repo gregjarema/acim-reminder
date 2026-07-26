@@ -341,9 +341,12 @@ public class MainActivity extends Activity {
         } else {
             when = "every hour";
         }
-        return l.hasTimedPractice()
+        String s = l.hasTimedPractice()
                 ? l.practiceMinutes + " minutes, " + when
                 : "Just remember the idea — " + when;
+        // The second track, where the lesson asks for both.
+        if (l.hourlyRemembrance) s += " · plus hourly reminders";
+        return s;
     }
 
     /**

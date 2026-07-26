@@ -73,6 +73,22 @@ public final class Scheduler {
      * lands near the ends of the day, which is the workbook's morning-and-evening.
      */
     static List<int[]> slotsFor(Lesson lesson) {
+        // The sittings, plus — where the lesson asks for it — an hourly nudge in
+        // between. A lesson that already sits hourly needs no second track.
+        Set<Integer> seen = new HashSet<>();
+        List<int[]> out = new ArrayList<>();
+        for (int[] hm : sittingSlots(lesson)) {
+            if (seen.add(slotId(hm[0], hm[1]))) out.add(hm);
+        }
+        if (lesson.hourlyRemembrance) {
+            for (int hour = START_HOUR; hour <= END_HOUR; hour++) {
+                if (seen.add(slotId(hour, 0))) out.add(new int[]{hour, 0});
+            }
+        }
+        return out;
+    }
+
+    private static List<int[]> sittingSlots(Lesson lesson) {
         List<int[]> out = new ArrayList<>();
         String kind = lesson.practiceKind == null ? Lesson.KIND_HOURLY : lesson.practiceKind;
 

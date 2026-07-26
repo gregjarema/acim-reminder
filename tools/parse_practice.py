@@ -100,37 +100,77 @@ def find_duration(text: str) -> tuple[int, str] | None:
     return None
 
 
-# Frequency. "kind" is one of:
-#   hourly   — once an hour through the practice window
-#   interval — every N minutes through the window
-#   count    — N times spread across the day
-FREQ_PATTERNS = [
+# The workbook usually prescribes TWO things at once, and they must not be
+# collapsed into one. Lesson 201 is the clearest case:
+#
+#   "Besides the time you give morning and evening, which should not be less
+#    than fifteen minutes, and the hourly remembrances you make throughout
+#    the day..."
+#
+# That's a long sitting twice a day AND a short remembrance every hour. So we
+# parse a sitting (how long, how often) and, separately, whether the lesson also
+# asks to be recalled hourly in between.
+#
+# Order matters within a sentence: "morning and evening" must beat "hourly",
+# otherwise the sentence above reads as an hourly sitting.
+SITTING_PATTERNS = [
+    (r"morning and (?:again at )?(?:night|evening)|morning and evening"
+     r"|night and morning", ("count", 2)),
     (r"twice an hour|every half[- ]hour|every thirty minutes", ("interval", 30)),
     (rf"every {NUM} (?:or {NUM} )?minutes", ("interval", None)),
-    (r"every hour|on the hour|hourly|each hour", ("hourly", None)),
-    (r"as often as (?:possible|you can)", ("hourly", None)),
-    (r"morning and (?:again at )?(?:night|evening)|morning and evening", ("count", 2)),
+    # Value is meaningless for an hourly sitting, but it must not be None:
+    # None means "read the count out of a capture group", and this pattern has
+    # none — which silently made every hourly lesson fall through to the next
+    # rule and land on morning-and-evening.
+    (r"every hour|on the hour|each hour|hourly|the hour strikes"
+     r"|as often as (?:possible|you can)", ("hourly", 1)),
     (rf"{NUM} (?:or {NUM} )?(?:practice periods|practice sessions)", ("count", None)),
-    (rf"(?:at least |about )?{NUM} times?(?: a| each| per)? day", ("count", None)),
+    (rf"(?:at least |about )?{NUM} times?(?: an?| each| per)? day", ("count", None)),
     (rf"(?:practise|practice|repeat|use it|apply it).{{0,30}}{NUM} times", ("count", None)),
-    (r"\btwice\b", ("count", 2)),
+    (r"\btwice a day\b", ("count", 2)),
 ]
+
+# A short recollection every hour, on top of whatever sitting is prescribed.
+REMEMBRANCE_RE = re.compile(
+    r"hourly remembrance|the hour strikes|every hour|each hour|on the hour"
+    r"|hour(?:ly)? (?:we|you)? ?remember|remember.{0,20}each hour", re.I)
+
+
+def _sitting_in(sentence: str) -> tuple[str, int] | None:
+    for pat, (kind, fixed) in SITTING_PATTERNS:
+        m = re.search(pat, sentence, re.I)
+        if not m:
+            continue
+        if fixed is not None:
+            return kind, fixed
+        vals = [num(g) for g in m.groups() if g and num(g)]
+        if vals:
+            return kind, max(1, round(max(vals)))
+    return None
 
 
 def find_frequency(text: str) -> tuple[str, int, str] | None:
-    """(kind, value, source sentence). value is minutes for interval, else count."""
+    """
+    How often to sit. Sentences that also name a duration are tried first —
+    those are the ones actually describing the practice ("Each hour today give
+    Him your tiny gift of but five minutes"), rather than prose that happens to
+    mention an hour.
+    """
+    sentences = re.split(r"(?<=[.!?])\s+", text)
+    with_duration = [s for s in sentences if "minute" in s.lower()]
+    for group in (with_duration, sentences):
+        for sentence in group:
+            hit = _sitting_in(sentence)
+            if hit:
+                return hit[0], hit[1], sentence.strip()
+    return None
+
+
+def find_remembrance(text: str) -> str | None:
+    """The sentence asking for an hourly recollection, if the lesson wants one."""
     for sentence in re.split(r"(?<=[.!?])\s+", text):
-        low = sentence.lower()
-        for pat, (kind, fixed) in FREQ_PATTERNS:
-            m = re.search(pat, low, re.I)
-            if not m:
-                continue
-            if fixed is not None:
-                return kind, fixed, sentence.strip()
-            # Take the largest number the pattern captured ("three or four" -> 4).
-            vals = [num(g) for g in m.groups() if g and num(g)]
-            if vals:
-                return kind, max(1, round(max(vals))), sentence.strip()
+        if REMEMBRANCE_RE.search(sentence):
+            return sentence.strip()
     return None
 
 
@@ -182,8 +222,8 @@ def main() -> int:
 
     # Sensible opening default: the workbook's first fortnight is "a minute or
     # so, three or four times". Overwritten as soon as Lesson 1 states its own.
-    cur_min, cur_kind, cur_val = 1, "count", 4
-    stated_dur = stated_freq = 0
+    cur_min, cur_kind, cur_val, cur_remember = 1, "count", 4, False
+    stated_dur = stated_freq = stated_rem = 0
 
     for l in lessons:
         text = strip_tags(l.get("body") or "")
@@ -206,26 +246,44 @@ def main() -> int:
         else:
             freq_src = ""
 
+        # The second track. A lesson that already sits hourly doesn't also need
+        # an hourly nudge — that's the same event.
+        rem = find_remembrance(text)
+        if rem:
+            cur_remember = True
+            stated_rem += 1
+        rem_src = rem or ""
+        if cur_kind == "hourly":
+            cur_remember = False
+
         l["practiceMinutes"] = cur_min
         l["practiceKind"] = cur_kind          # hourly | interval | count
         l["practiceValue"] = cur_val          # minutes if interval, else count
+        l["hourlyRemembrance"] = cur_remember
         l["practiceStated"] = bool(d or f)
-        l["practiceSource"] = (dur_src + (" " if dur_src and freq_src else "") + freq_src).strip()
+        l["practiceSource"] = " ".join(s for s in (dur_src, freq_src, rem_src) if s).strip()
         l["meditationText"] = meditation_lines(l)
 
+    from collections import Counter
     print(f"lessons: {len(lessons)}")
     print(f"  duration stated outright:  {stated_dur}  (rest inherit the previous lesson)")
     print(f"  frequency stated outright: {stated_freq}")
-    from collections import Counter
+    print(f"  hourly remembrance stated: {stated_rem}")
     print("  resulting duration spread:", dict(Counter(l["practiceMinutes"] for l in lessons).most_common()))
-    print("  resulting frequency spread:",
+    print("  resulting sitting spread:",
           dict(Counter(f'{l["practiceKind"]}:{l["practiceValue"]}' for l in lessons).most_common(8)))
+    print(f"  also nudged hourly:        {sum(1 for l in lessons if l['hourlyRemembrance'])}")
     print(f"  with meditation text:      {sum(1 for l in lessons if l['meditationText'])}")
 
     if args.report:
-        for l in lessons[:0] or [x for x in lessons if x["practiceStated"]][:15]:
-            print(f'  L{l["number"]:3d}  {l["practiceMinutes"]:2d}min '
-                  f'{l["practiceKind"]}:{l["practiceValue"]}  <- {l["practiceSource"][:90]}')
+        for l in lessons:
+            freq = ("every hour" if l["practiceKind"] == "hourly"
+                    else f'every {l["practiceValue"]}min' if l["practiceKind"] == "interval"
+                    else f'{l["practiceValue"]}x/day')
+            print(f'L{l["number"]:3d} | {l["practiceMinutes"]:2d}min | {freq:11s} | '
+                  f'{"+hourly" if l["hourlyRemembrance"] else "       "} | '
+                  f'{"stated  " if l["practiceStated"] else "inherit "} | '
+                  f'{l["practiceSource"][:120]}')
         return 0
 
     LESSONS.write_text(json.dumps(lessons, ensure_ascii=False, separators=(",", ":")),
