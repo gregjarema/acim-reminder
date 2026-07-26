@@ -80,7 +80,11 @@ def render_body(entry: dict) -> str:
             text = (para.get("text") or "").strip()
             if not text:
                 continue
-            body = SENTENCE_NUM_RE.sub(lambda m: f"<sup>{m.group(1)}</sup>{m.group(2)}", esc(text))
+            # The sentence numbers are reference marks, not content — keep them
+            # available but faint, so they don't compete with the reading.
+            body = SENTENCE_NUM_RE.sub(
+                lambda m: f'<sup><font color="#BCB3A2">{m.group(1)}</font></sup>{m.group(2)}',
+                esc(text))
             n = para.get("n")
             blocks.append(f"<b>{n}.</b> {body}" if n else body)
     return "\n\n".join(blocks)

@@ -169,7 +169,18 @@ public class MainActivity extends Activity {
         settings.setDomStorageEnabled(true);
         settings.setMediaPlaybackRequiresUserGesture(false);
 
-        view.setWebViewClient(new WebViewClient());
+        view.setWebViewClient(new WebViewClient() {
+            @Override
+            public void onPageFinished(WebView v, String url) {
+                // The watch page arrives with Vimeo's header, sign-in bar and
+                // title around the player. Strip them so the box frames the
+                // video. Re-run a couple of times: the page finishes loading
+                // before its own scripts finish laying the player out.
+                frameThePlayer(v);
+                mainHandler.postDelayed(() -> frameThePlayer(v), 900);
+                mainHandler.postDelayed(() -> frameThePlayer(v), 2200);
+            }
+        });
         view.setWebChromeClient(new WebChromeClient() {
             @Override
             public void onProgressChanged(WebView v, int newProgress) {
@@ -238,6 +249,35 @@ public class MainActivity extends Activity {
         } catch (Exception e) {
             Toast.makeText(this, "Couldn't play the video.", Toast.LENGTH_SHORT).show();
         }
+    }
+
+    /**
+     * Trim the watch page down to just the player.
+     *
+     * We can't use Vimeo's embed URL — these videos are whitelisted to specific
+     * domains, and the embed refuses to play anywhere else — so the plain watch
+     * page it is, chrome and all. This walks up from the player element and
+     * hides every sibling on the way to <body>, which leaves the player's own
+     * ancestor chain and nothing else. That's deliberately structural rather
+     * than a list of Vimeo class names, which would rot the moment they ship a
+     * redesign. If the player can't be found, nothing is hidden and you get the
+     * ordinary page — no worse than before.
+     */
+    private void frameThePlayer(WebView v) {
+        v.evaluateJavascript(
+                "(function(){try{"
+                + "var p=document.querySelector('video')"
+                + "||document.querySelector('iframe[src*=\"player.vimeo.com\"]')"
+                + "||document.querySelector('[class*=\"player\"]');"
+                + "if(!p)return;"
+                + "var n=p.tagName==='VIDEO'?(p.closest('div')||p):p;"
+                + "while(n&&n!==document.body){var par=n.parentNode;if(par){"
+                + "Array.prototype.forEach.call(par.children,function(s){"
+                + "if(s!==n)s.style.display='none';});}n=par;}"
+                + "document.body.style.margin='0';"
+                + "document.documentElement.style.background='#000';"
+                + "window.scrollTo(0,0);"
+                + "}catch(e){}})();", null);
     }
 
     /** Collapse a player back to its "Watch" link and stop it loading. */
