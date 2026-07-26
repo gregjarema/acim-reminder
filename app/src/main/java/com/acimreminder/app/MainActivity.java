@@ -114,7 +114,7 @@ public class MainActivity extends Activity implements Playback.Controller {
         findViewById(R.id.tabWorkbook).setOnClickListener(v -> selectTab(TAB_WORKBOOK));
         findViewById(R.id.tabText).setOnClickListener(v -> selectTab(TAB_TEXT));
         findViewById(R.id.tabSaved).setOnClickListener(v -> selectTab(TAB_SAVED));
-        findViewById(R.id.btnCopyAll).setOnClickListener(v -> copyAllSaved());
+        findViewById(R.id.btnOverflow).setOnClickListener(this::showOverflow);
 
         enableSaving(R.id.tvBody, false);
         enableSaving(R.id.tvTextBody, true);
@@ -123,8 +123,6 @@ public class MainActivity extends Activity implements Playback.Controller {
         chronoMeditation.setOnClickListener(v -> stopMeditation());
         findViewById(R.id.btnBegin).setOnClickListener(v -> beginMeditation());
 
-        findViewById(R.id.btnLessonJump).setOnClickListener(v -> showJumpToLessonDialog());
-        findViewById(R.id.btnWallpaper).setOnClickListener(v -> chooseWallpaper());
         findViewById(R.id.btnListenOnly).setOnClickListener(
                 v -> toggleListenOnly(R.id.videoBox, R.id.btnListenOnly));
         findViewById(R.id.btnTextListenOnly).setOnClickListener(
@@ -133,7 +131,6 @@ public class MainActivity extends Activity implements Playback.Controller {
 
         findViewById(R.id.btnTextNext).setOnClickListener(v -> markTextRead());
         findViewById(R.id.btnTextPrev).setOnClickListener(v -> goToPreviousTextDay());
-        findViewById(R.id.btnTextJump).setOnClickListener(v -> showJumpToDayDialog());
 
         bindToday();
         bindTextDay();
@@ -179,6 +176,40 @@ public class MainActivity extends Activity implements Playback.Controller {
         if (tab != TAB_TEXT) pausePlayer(textWebView);
 
         if (tab == TAB_SAVED) bindSaved();
+    }
+
+    /**
+     * The occasional actions. These used to sit stacked under the lesson —
+     * three permanent buttons for things you do a few times a year, competing
+     * with the two you use daily. They're the same actions, just no longer in
+     * the way; the menu is built per tab so it only offers what applies here.
+     */
+    private void showOverflow(View anchor) {
+        android.widget.PopupMenu menu = new android.widget.PopupMenu(this, anchor);
+        final int JUMP = 1, WALLPAPER = 2, COPY = 3;
+
+        if (selectedTab == TAB_WORKBOOK) {
+            menu.getMenu().add(Menu.NONE, JUMP, 0, "Jump to lesson…");
+            menu.getMenu().add(Menu.NONE, WALLPAPER, 1, "Set as wallpaper…");
+        } else if (selectedTab == TAB_TEXT) {
+            menu.getMenu().add(Menu.NONE, JUMP, 0, "Jump to day…");
+            menu.getMenu().add(Menu.NONE, WALLPAPER, 1, "Set as wallpaper…");
+        } else {
+            menu.getMenu().add(Menu.NONE, COPY, 0, "Copy all passages");
+        }
+
+        menu.setOnMenuItemClickListener(item -> {
+            switch (item.getItemId()) {
+                case JUMP:
+                    if (selectedTab == TAB_TEXT) showJumpToDayDialog();
+                    else showJumpToLessonDialog();
+                    return true;
+                case WALLPAPER: chooseWallpaper(); return true;
+                case COPY: copyAllSaved(); return true;
+                default: return false;
+            }
+        });
+        menu.show();
     }
 
     private static int vis(boolean shown) {
@@ -283,7 +314,7 @@ public class MainActivity extends Activity implements Playback.Controller {
         ViewGroup.LayoutParams lp = box.getLayoutParams();
         lp.height = hiding ? 1 : Math.round(320 * getResources().getDisplayMetrics().density);
         box.setLayoutParams(lp);
-        toggle.setText(hiding ? "Show video" : "Listen only (hide video)");
+        toggle.setText(hiding ? "Show video" : "Listen only");
     }
 
     // ------------------------------------------------------------- players
@@ -621,7 +652,6 @@ public class MainActivity extends Activity implements Playback.Controller {
         list.removeAllViews();
 
         TextView hint = findViewById(R.id.tvSavedHint);
-        findViewById(R.id.btnCopyAll).setVisibility(vis(!all.isEmpty()));
         if (all.isEmpty()) {
             hint.setText("Highlight any passage in the Workbook or Text and choose "
                     + "“Save passage”. They'll collect here, in Course order.");
@@ -700,8 +730,8 @@ public class MainActivity extends Activity implements Playback.Controller {
     private TextView rowAction(String label, View.OnClickListener onClick, float density) {
         TextView t = new TextView(this);
         t.setText(label);
-        t.setTextSize(14);
-        t.setTextColor(SELECTED);
+        t.setTextSize(13);
+        t.setTextColor(0xFFA08A63);
         t.setTextIsSelectable(false);
         t.setPadding(0, Math.round(6 * density), Math.round(22 * density),
                 Math.round(6 * density));

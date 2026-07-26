@@ -103,7 +103,35 @@
                     android:layout_width="match_parent"
                     android:layout_height="2dp"
                     android:background="#E9E2D4" />
-            </LinearLayout>
+    
+            <TextView
+                android:id="@+id/btnOverflow"
+                android:layout_width="44dp"
+                android:layout_height="match_parent"
+                android:gravity="center"
+                android:text="\u22EF"
+                android:textSize="20sp"
+                android:textColor="#9A9086"
+                android:background="?android:attr/selectableItemBackground"
+                android:clickable="true"
+                android:focusable="true"
+                android:textIsSelectable="false"
+                android:contentDescription="More" />
+        </LinearLayout>
+
+            <TextView
+                android:id="@+id/btnOverflow"
+                android:layout_width="44dp"
+                android:layout_height="match_parent"
+                android:gravity="center"
+                android:text="\u22EF"
+                android:textSize="20sp"
+                android:textColor="#9A9086"
+                android:background="?android:attr/selectableItemBackground"
+                android:clickable="true"
+                android:focusable="true"
+                android:textIsSelectable="false"
+                android:contentDescription="More" />
         </LinearLayout>
 
         <FrameLayout
@@ -190,7 +218,7 @@
                         android:layout_marginTop="8dp"
                         android:gravity="center"
                         android:padding="10dp"
-                        android:text="Listen only (hide video)"
+                        android:text="Listen only"
                         android:textSize="14sp"
                         android:textColor="#7A6646"
                         android:background="?android:attr/selectableItemBackground"
@@ -237,37 +265,7 @@
                         android:textIsSelectable="false"
                         android:visibility="gone" />
 
-                    <TextView
-                        android:id="@+id/btnWallpaper"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:layout_marginTop="10dp"
-                        android:gravity="center"
-                        android:padding="12dp"
-                        android:text="Set today's lesson as wallpaper…"
-                        android:textSize="15sp"
-                        android:textColor="#7A6646"
-                        android:background="?android:attr/selectableItemBackground"
-                        android:clickable="true"
-                        android:focusable="true"
-                        android:textIsSelectable="false" />
 
-                    <!-- Re-anchors the daily schedule, so a wrong choice at
-                         first run (or a change of pace) is always fixable. -->
-                    <TextView
-                        android:id="@+id/btnLessonJump"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:layout_marginTop="10dp"
-                        android:gravity="center"
-                        android:padding="12dp"
-                        android:text="Jump to lesson…"
-                        android:textSize="15sp"
-                        android:textColor="#7A6646"
-                        android:background="?android:attr/selectableItemBackground"
-                        android:clickable="true"
-                        android:focusable="true"
-                        android:textIsSelectable="false" />
 
                     <View
                         android:layout_width="match_parent"
@@ -376,7 +374,7 @@
                         android:layout_marginTop="8dp"
                         android:gravity="center"
                         android:padding="10dp"
-                        android:text="Listen only (hide video)"
+                        android:text="Listen only"
                         android:textSize="14sp"
                         android:textColor="#7A6646"
                         android:background="?android:attr/selectableItemBackground"
@@ -404,7 +402,7 @@
 
                         <TextView
                             android:id="@+id/btnTextPrev"
-                            android:layout_width="0dp"
+                            android:layout_width="match_parent"
                             android:layout_weight="1"
                             android:layout_height="wrap_content"
                             android:gravity="center"
@@ -417,20 +415,6 @@
                             android:focusable="true"
                             android:textIsSelectable="false" />
 
-                        <TextView
-                            android:id="@+id/btnTextJump"
-                            android:layout_width="0dp"
-                            android:layout_weight="1"
-                            android:layout_height="wrap_content"
-                            android:gravity="center"
-                            android:padding="12dp"
-                            android:text="Jump to day…"
-                            android:textSize="15sp"
-                            android:textColor="#7A6646"
-                            android:background="?android:attr/selectableItemBackground"
-                            android:clickable="true"
-                            android:focusable="true"
-                            android:textIsSelectable="false" />
                     </LinearLayout>
 
                     <View
@@ -495,21 +479,6 @@
                         android:lineSpacingMultiplier="1.4"
                         android:textColor="#7A6646" />
 
-                    <TextView
-                        android:id="@+id/btnCopyAll"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:layout_marginTop="14dp"
-                        android:gravity="center"
-                        android:padding="12dp"
-                        android:text="Copy all"
-                        android:textSize="15sp"
-                        android:textColor="#7A6646"
-                        android:background="?android:attr/selectableItemBackground"
-                        android:clickable="true"
-                        android:focusable="true"
-                        android:textIsSelectable="false"
-                        android:visibility="gone" />
 
                     <!-- Passages are added here in code, in Course order. -->
                     <LinearLayout
