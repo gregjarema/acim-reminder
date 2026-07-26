@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The downloaded APK lives in the cache. A FileProvider uri is the only way
+     to hand a file to the package installer; a file:// uri is rejected. -->
+<paths>
+    <cache-path name="updates" path="." />
+</paths>

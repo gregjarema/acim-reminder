@@ -74,6 +74,31 @@ becomes reachable once it lands.
 
 ---
 
+## Updates
+
+New builds install **over** the old one — no uninstall, no losing your place or
+your saved passages. The app checks GitHub once a day, downloads a newer build
+if there is one, and posts a notification; tapping it opens Android's installer.
+
+Android never lets a sideloaded app install silently, so that final tap is
+required no matter what. Everything before it is automatic.
+
+This depends on the APK being signed with a **stable key**. Gradle otherwise
+falls back to `~/.android/debug.keystore`, which the CI runner generates fresh
+for every build — so each APK was signed by a different key, and Android refuses
+to update an app whose signature changed. That is why every build used to need
+uninstalling first.
+
+The keystore is never committed. CI writes it from the repository secret
+`SIGNING_KEYSTORE_BASE64`; if that secret is missing the build still succeeds,
+but warns and falls back to the throwaway key.
+
+`versionCode` is the CI run number, which is also the release tag — the one
+value guaranteed to keep increasing, and what the app reads back to know which
+build it is running.
+
+---
+
 ## Playing the videos
 
 Both tabs play Marianne's video inline. Everything about how that works is

@@ -2,6 +2,8 @@ plugins {
     id 'com.android.application'
 }
 
+def ciBuild = (project.findProperty('buildNumber') ?: '0') as Integer
+
 android {
     namespace 'com.acimreminder.app'
     compileSdk 36
@@ -11,14 +13,44 @@ android {
         minSdk 33          // Android 13 — first version with runtime notification permission
         targetSdk 36       // Android 16 (the newest platform published to the build tools;
                            // Android 17 / API 37 isn't downloadable yet). Runs fine on Android 17.
-        versionCode 29
-        versionName "3.10.1-review-labels"
+        // CI passes -PbuildNumber=<run number>, which is also the release tag.
+        // Android only accepts an update whose versionCode is higher, and the
+        // run number is the one value guaranteed to keep increasing. The app
+        // reads the build back out of versionName to know what it's running.
+        versionCode ciBuild > 0 ? ciBuild : 29
+        versionName "3.11-updates+build-" + (ciBuild > 0 ? ciBuild : 0)
+    }
+
+    // A stable signing key, so a new build installs OVER the old one.
+    //
+    // Without this Gradle falls back to ~/.android/debug.keystore, which the CI
+    // runner generates fresh for every build. Each APK was therefore signed by a
+    // different key, and Android refuses to update an app whose signature has
+    // changed — which is why every new build had to be uninstalled first.
+    //
+    // The keystore is never committed. CI writes it from the
+    // SIGNING_KEYSTORE_BASE64 secret; the password below protects nothing on its
+    // own, since it's useless without that file.
+    signingConfigs {
+        stable {
+            def ks = file('signing.jks')
+            if (ks.exists()) {
+                storeFile ks
+                storePassword 'acimreminder'
+                keyAlias 'acim'
+                keyPassword 'acimreminder'
+            }
+        }
     }
 
     buildTypes {
         debug {
-            // Debug build is what CI ships. No signing config needed — Gradle
-            // signs debug APKs with the auto-generated debug key.
+            // Sign with the stable key when it's present, and fall back to the
+            // throwaway debug key otherwise so the project still builds for
+            // anyone without the secret.
+            signingConfig file('signing.jks').exists()
+                    ? signingConfigs.stable
+                    : signingConfigs.debug
             applicationIdSuffix ""
             minifyEnabled false
         }

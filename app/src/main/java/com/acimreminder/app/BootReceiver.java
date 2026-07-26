@@ -15,6 +15,7 @@ public class BootReceiver extends BroadcastReceiver {
         if (Intent.ACTION_BOOT_COMPLETED.equals(intent.getAction())) {
             Notify.ensureChannels(ctx);
             Scheduler.scheduleAll(ctx);
+        UpdateReceiver.schedule(ctx);
         }
     }
 }

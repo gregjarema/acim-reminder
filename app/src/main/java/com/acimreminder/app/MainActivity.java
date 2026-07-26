@@ -142,6 +142,7 @@ public class MainActivity extends Activity implements Playback.Controller {
 
         // Arm today's reminders now, and again every time the app is opened.
         Scheduler.scheduleAll(this);
+        UpdateReceiver.schedule(this);
     }
 
     @Override

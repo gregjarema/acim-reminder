@@ -29,6 +29,10 @@
     <!-- Play today's lesson video inline, right in the app, instead of a browser. -->
     <uses-permission android:name="android.permission.INTERNET" />
 
+    <!-- Install a newer build over this one. Android still shows its own
+         installer confirmation; nothing here can install silently. -->
+    <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
+
     <application
         android:allowBackup="true"
         android:icon="@mipmap/ic_launcher"
@@ -102,6 +106,23 @@
         <!-- Fires the end bell at the exact end-of-meditation minute. -->
         <receiver
             android:name=".EndBellReceiver"
+            android:exported="false" />
+
+        <!-- Hands the downloaded APK to the package installer. A file:// uri
+             is rejected, so it has to go through a content provider. -->
+        <provider
+            android:name="androidx.core.content.FileProvider"
+            android:authorities="${applicationId}.updates"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/update_paths" />
+        </provider>
+
+        <!-- The daily check for a newer build. -->
+        <receiver
+            android:name=".UpdateReceiver"
             android:exported="false" />
 
         <!-- Re-arms alarms after the phone reboots. -->
