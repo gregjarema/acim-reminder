@@ -125,6 +125,12 @@ SITTING_PATTERNS = [
     (r"every hour|on the hour|each hour|hourly|the hour strikes"
      r"|as often as (?:possible|you can)", ("hourly", 1)),
     (rf"{NUM} (?:or {NUM} )?(?:practice periods|practice sessions)", ("count", None)),
+    # "two longer practice periods", "two quiet periods" — an adjective between
+    # the number and the noun defeated the pattern above, which is how Lesson 70
+    # ("two longer practice periods... ten to fifteen minutes") ended up
+    # inheriting an hourly sitting instead of stating its own two.
+    (rf"{NUM}\s+(?:\w+\s+){{1,2}}(?:practice periods|practice sessions|periods)",
+     ("count", None)),
     (rf"(?:at least |about )?{NUM} times?(?: an?| each| per)? day", ("count", None)),
     (rf"(?:practise|practice|repeat|use it|apply it).{{0,30}}{NUM} times", ("count", None)),
     (r"\btwice a day\b", ("count", 2)),
@@ -133,7 +139,12 @@ SITTING_PATTERNS = [
 # A short recollection every hour, on top of whatever sitting is prescribed.
 REMEMBRANCE_RE = re.compile(
     r"hourly remembrance|the hour strikes|every hour|each hour|on the hour"
-    r"|hour(?:ly)? (?:we|you)? ?remember|remember.{0,20}each hour", re.I)
+    r"|hour(?:ly)? (?:we|you)? ?remember|remember.{0,20}each hour"
+    # Not every lesson says "hourly". Many ask for short, frequent recollection
+    # in exactly these words — Lesson 70's "the short and frequent practice
+    # periods today, remind yourself..." is the pattern.
+    r"|short and frequent|frequent(?:ly)? practice|as often as (?:possible|you can)"
+    r"|remembrances? (?:you make )?throughout the day", re.I)
 
 
 def _sitting_in(sentence: str) -> tuple[str, int] | None:
@@ -248,6 +259,10 @@ def main() -> int:
 
         # The second track. A lesson that already sits hourly doesn't also need
         # an hourly nudge — that's the same event.
+        if cur_kind == "hourly" and cur_min >= 10:
+            cur_kind, cur_val = "count", 2
+            cur_remember = True
+
         rem = find_remembrance(text)
         if rem:
             cur_remember = True
@@ -260,6 +275,10 @@ def main() -> int:
         l["practiceKind"] = cur_kind          # hourly | interval | count
         l["practiceValue"] = cur_val          # minutes if interval, else count
         l["hourlyRemembrance"] = cur_remember
+        # Recorded separately: a lesson can state its duration while silently
+        # inheriting its frequency, and one combined flag hides exactly that.
+        l["durationStated"] = bool(d) or (dur_src != "")
+        l["frequencyStated"] = bool(f)
         l["practiceStated"] = bool(d or f)
         l["practiceSource"] = " ".join(s for s in (dur_src, freq_src, rem_src) if s).strip()
         l["meditationText"] = meditation_lines(l)
