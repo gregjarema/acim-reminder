@@ -145,6 +145,27 @@ out of sight while it carried on. Leaving the app does the same thing.
 
 ---
 
+## The live wallpaper
+
+**Use the live wallpaper…** in the `⋯` menu opens Android's preview with this
+app selected. It sets the *live* wallpaper — the one that redraws itself each
+day — not a picture of today's lesson.
+
+It follows the phone's light and dark mode, and **tells the system which it is**
+via `onComputeColors()`. That matters: nothing can look at a live wallpaper and
+work out whether its text should be black or white, so the system asks, and a
+wallpaper that doesn't answer is assumed dark. The lock screen then keeps its
+clock, date and notifications white — invisible on the daytime cream. The
+answer is stated outright rather than sampled from a bitmap, because the
+sampling heuristic wants a nearly unbroken bright field and a page of dark serif
+text over cream can fall the wrong side of it.
+
+The lesson sits below the middle of the screen. Above it, it landed behind the
+media player's card on the lock screen — unreadable exactly when something was
+playing.
+
+---
+
 ## Saved passages
 
 Highlight anything in the Workbook or the Text and choose **Save passage** from

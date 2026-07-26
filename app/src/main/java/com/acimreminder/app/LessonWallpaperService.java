@@ -1,5 +1,6 @@
 package com.acimreminder.app;
 
+import android.app.WallpaperColors;
 import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.Paint;
@@ -70,6 +71,33 @@ public class LessonWallpaperService extends WallpaperService {
         private final Runnable midnightRedraw = this::draw;
         private boolean visible;
         private int width, height;
+        /** The palette the system was last told about; null until it's asked. */
+        private Boolean toldDark;
+
+        /**
+         * What colour the lock screen and home screen should draw *their* text in.
+         *
+         * The system has no way to look at a live wallpaper and work this out —
+         * it asks. Without an answer it assumes a dark wallpaper and keeps the
+         * clock, date and notifications white, which on the daytime cream is
+         * near invisible. This is the wallpaper's side of the same fix that
+         * windowLightStatusBar makes inside the app.
+         */
+        @Override
+        public WallpaperColors onComputeColors() {
+            boolean dark = night();
+            toldDark = dark;
+            return new WallpaperColors(
+                    Color.valueOf(dark ? BACKGROUND_DARK : BACKGROUND),
+                    Color.valueOf(dark ? ACCENT_DARK : ACCENT),
+                    Color.valueOf(dark ? INK_DARK : INK),
+                    // Stated outright rather than left to be guessed from a
+                    // bitmap: the sampling heuristic wants a nearly unbroken
+                    // bright field, and a page of dark serif text over cream can
+                    // fall the wrong side of it.
+                    dark ? WallpaperColors.HINT_SUPPORTS_DARK_THEME
+                         : WallpaperColors.HINT_SUPPORTS_DARK_TEXT);
+        }
 
         @Override
         public void onVisibilityChanged(boolean nowVisible) {
@@ -116,6 +144,10 @@ public class LessonWallpaperService extends WallpaperService {
                     try { holder.unlockCanvasAndPost(canvas); } catch (Exception ignored) { }
                 }
             }
+            // The system caches the answer to onComputeColors, so a flip between
+            // the light and dark palettes has to be announced or the lock screen
+            // keeps the text colour it chose for the other one.
+            if (toldDark == null || toldDark != night()) notifyColorsChanged();
             scheduleMidnight();
         }
 
