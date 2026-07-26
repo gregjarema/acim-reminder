@@ -103,21 +103,8 @@
                     android:layout_width="match_parent"
                     android:layout_height="2dp"
                     android:background="#E9E2D4" />
-    
-            <TextView
-                android:id="@+id/btnOverflow"
-                android:layout_width="44dp"
-                android:layout_height="match_parent"
-                android:gravity="center"
-                android:text="\u22EF"
-                android:textSize="20sp"
-                android:textColor="#9A9086"
-                android:background="?android:attr/selectableItemBackground"
-                android:clickable="true"
-                android:focusable="true"
-                android:textIsSelectable="false"
-                android:contentDescription="More" />
-        </LinearLayout>
+
+            </LinearLayout>
 
             <TextView
                 android:id="@+id/btnOverflow"
