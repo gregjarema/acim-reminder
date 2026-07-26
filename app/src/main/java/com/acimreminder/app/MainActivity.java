@@ -3,6 +3,8 @@ package com.acimreminder.app;
 import android.app.Activity;
 import android.app.AlertDialog;
 import android.app.WallpaperManager;
+import android.content.ClipData;
+import android.content.ClipboardManager;
 import android.content.ComponentName;
 import android.content.Intent;
 import android.content.SharedPreferences;
@@ -11,6 +13,9 @@ import android.os.Handler;
 import android.os.Looper;
 import android.os.SystemClock;
 import android.text.Html;
+import android.view.ActionMode;
+import android.view.Menu;
+import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
 import android.webkit.WebChromeClient;
@@ -19,7 +24,9 @@ import android.webkit.WebView;
 import android.webkit.WebViewClient;
 import android.widget.Button;
 import android.widget.Chronometer;
+import android.widget.EditText;
 import android.widget.FrameLayout;
+import android.widget.LinearLayout;
 import android.widget.ProgressBar;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -49,6 +56,7 @@ public class MainActivity extends Activity {
     private static final String KEY_TAB = "selected_tab";
     private static final int TAB_WORKBOOK = 0;
     private static final int TAB_TEXT = 1;
+    private static final int TAB_SAVED = 2;
 
     private static final int SELECTED = 0xFF7A6646;   // the app's brown
     private static final int UNSELECTED = 0xFF9A9086;
@@ -92,6 +100,7 @@ public class MainActivity extends Activity {
             v.setPadding(0, bars.top, 0, 0);
             findViewById(R.id.content).setPadding(pad, pad, pad, pad + bars.bottom);
             findViewById(R.id.textContent).setPadding(pad, pad, pad, pad + bars.bottom);
+            findViewById(R.id.savedContent).setPadding(pad, pad, pad, pad + bars.bottom);
             return insets;
         });
 
@@ -101,6 +110,11 @@ public class MainActivity extends Activity {
 
         findViewById(R.id.tabWorkbook).setOnClickListener(v -> selectTab(TAB_WORKBOOK));
         findViewById(R.id.tabText).setOnClickListener(v -> selectTab(TAB_TEXT));
+        findViewById(R.id.tabSaved).setOnClickListener(v -> selectTab(TAB_SAVED));
+        findViewById(R.id.btnCopyAll).setOnClickListener(v -> copyAllSaved());
+
+        enableSaving(R.id.tvBody, false);
+        enableSaving(R.id.tvTextBody, true);
 
         chronoMeditation = findViewById(R.id.chronoMeditation);
         chronoMeditation.setOnClickListener(v -> stopMeditation());
@@ -142,18 +156,29 @@ public class MainActivity extends Activity {
         selectedTab = tab;
         prefs().edit().putInt(KEY_TAB, tab).apply();
 
-        boolean workbook = tab == TAB_WORKBOOK;
-        findViewById(R.id.workbookScroll).setVisibility(workbook ? View.VISIBLE : View.GONE);
-        findViewById(R.id.textScroll).setVisibility(workbook ? View.GONE : View.VISIBLE);
+        findViewById(R.id.workbookScroll).setVisibility(vis(tab == TAB_WORKBOOK));
+        findViewById(R.id.textScroll).setVisibility(vis(tab == TAB_TEXT));
+        findViewById(R.id.savedScroll).setVisibility(vis(tab == TAB_SAVED));
 
-        ((TextView) findViewById(R.id.tabWorkbookLabel)).setTextColor(workbook ? SELECTED : UNSELECTED);
-        ((TextView) findViewById(R.id.tabTextLabel)).setTextColor(workbook ? UNSELECTED : SELECTED);
-        findViewById(R.id.tabWorkbookUnderline).setBackgroundColor(workbook ? SELECTED : RULE);
-        findViewById(R.id.tabTextUnderline).setBackgroundColor(workbook ? RULE : SELECTED);
+        paintTab(R.id.tabWorkbookLabel, R.id.tabWorkbookUnderline, tab == TAB_WORKBOOK);
+        paintTab(R.id.tabTextLabel, R.id.tabTextUnderline, tab == TAB_TEXT);
+        paintTab(R.id.tabSavedLabel, R.id.tabSavedUnderline, tab == TAB_SAVED);
 
         // Leaving a tab stops whatever was playing in it, so switching away
         // doesn't leave Marianne talking from a hidden pane.
-        pausePlayer(workbook ? textWebView : webView);
+        if (tab != TAB_WORKBOOK) pausePlayer(webView);
+        if (tab != TAB_TEXT) pausePlayer(textWebView);
+
+        if (tab == TAB_SAVED) bindSaved();
+    }
+
+    private static int vis(boolean shown) {
+        return shown ? View.VISIBLE : View.GONE;
+    }
+
+    private void paintTab(int labelId, int underlineId, boolean selected) {
+        ((TextView) findViewById(labelId)).setTextColor(selected ? SELECTED : UNSELECTED);
+        findViewById(underlineId).setBackgroundColor(selected ? SELECTED : RULE);
     }
 
     /** Silence a hidden player without tearing down the page it has loaded. */
@@ -402,6 +427,181 @@ public class MainActivity extends Activity {
                 })
                 .setNegativeButton("Cancel", null)
                 .show();
+    }
+
+    // -------------------------------------------------------- saved tab
+
+    /**
+     * Add "Save passage" to the selection menu that appears when you highlight
+     * text. Hooking the existing menu means highlighting works the way it does
+     * everywhere else on the phone — no custom gesture to learn, and Copy and
+     * Share stay where they are.
+     */
+    private void enableSaving(int textViewId, boolean isTextTab) {
+        TextView tv = findViewById(textViewId);
+        tv.setCustomSelectionActionModeCallback(new ActionMode.Callback() {
+            @Override
+            public boolean onCreateActionMode(ActionMode mode, Menu menu) {
+                menu.add(Menu.NONE, R.id.action_save_passage, 0, "Save passage");
+                return true;
+            }
+
+            @Override
+            public boolean onPrepareActionMode(ActionMode mode, Menu menu) {
+                return false;
+            }
+
+            @Override
+            public boolean onActionItemClicked(ActionMode mode, MenuItem item) {
+                if (item.getItemId() != R.id.action_save_passage) return false;
+                int start = Math.min(tv.getSelectionStart(), tv.getSelectionEnd());
+                int end = Math.max(tv.getSelectionStart(), tv.getSelectionEnd());
+                if (start >= 0 && end > start) {
+                    promptToSave(tv.getText().subSequence(start, end).toString(),
+                            tv.getText(), start, isTextTab);
+                }
+                mode.finish();
+                return true;
+            }
+
+            @Override
+            public void onDestroyActionMode(ActionMode mode) { }
+        });
+    }
+
+    /** Offer a note alongside the passage — the note is usually the point. */
+    private void promptToSave(String passage, CharSequence full, int start, boolean isTextTab) {
+        final EditText input = new EditText(this);
+        input.setHint("Add a note (optional)");
+        int pad = Math.round(20 * getResources().getDisplayMetrics().density);
+        FrameLayout wrap = new FrameLayout(this);
+        wrap.setPadding(pad, pad / 2, pad, 0);
+        wrap.addView(input);
+
+        String citation, source;
+        if (isTextTab) {
+            TextDay day = TextDays.current(this);
+            citation = day == null ? "T-?" : Citation.forTextDay(day.label, full, start);
+            source = day == null ? "" : day.shortTitle();
+        } else {
+            Lesson l = Lessons.today(this);
+            citation = Citation.forLesson(l.number, full, start);
+            source = l.title;
+        }
+        final String fCitation = citation, fSource = source;
+
+        new AlertDialog.Builder(this)
+                .setTitle("Save " + citation)
+                .setView(wrap)
+                .setPositiveButton("Save", (d, w) -> {
+                    SavedPassages.add(this, fCitation, fSource, passage,
+                            input.getText().toString());
+                    Toast.makeText(this, "Saved " + fCitation, Toast.LENGTH_SHORT).show();
+                })
+                .setNegativeButton("Cancel", null)
+                .show();
+    }
+
+    /** Rebuild the saved list, in Course order. */
+    private void bindSaved() {
+        List<SavedPassages.Passage> all = SavedPassages.all(this);
+        LinearLayout list = findViewById(R.id.savedList);
+        list.removeAllViews();
+
+        TextView hint = findViewById(R.id.tvSavedHint);
+        findViewById(R.id.btnCopyAll).setVisibility(vis(!all.isEmpty()));
+        if (all.isEmpty()) {
+            hint.setText("Highlight any passage in the Workbook or Text and choose "
+                    + "“Save passage”. They'll collect here, in Course order.");
+            return;
+        }
+        hint.setText(all.size() == 1 ? "1 passage" : all.size() + " passages");
+
+        float density = getResources().getDisplayMetrics().density;
+        for (SavedPassages.Passage p : all) {
+            list.addView(savedRow(p, density));
+        }
+    }
+
+    private View savedRow(SavedPassages.Passage p, float density) {
+        LinearLayout row = new LinearLayout(this);
+        row.setOrientation(LinearLayout.VERTICAL);
+        int pad = Math.round(14 * density);
+        row.setPadding(0, pad, 0, pad);
+
+        TextView cite = new TextView(this);
+        cite.setText(p.citation + "   ·   " + p.source);
+        cite.setTextSize(12);
+        cite.setLetterSpacing(0.12f);
+        cite.setTextColor(0xFFA08A63);
+        cite.setTextIsSelectable(false);
+        row.addView(cite);
+
+        TextView body = new TextView(this);
+        body.setText(p.text);
+        body.setTextSize(16);
+        body.setLineSpacing(0, 1.4f);
+        body.setTextColor(0xFF1E1E1E);
+        body.setTypeface(android.graphics.Typeface.SERIF);
+        body.setPadding(0, Math.round(6 * density), 0, 0);
+        row.addView(body);
+
+        if (!p.note.isEmpty()) {
+            TextView note = new TextView(this);
+            note.setText("— " + p.note);
+            note.setTextSize(14);
+            note.setTextColor(0xFF7A6646);
+            note.setPadding(0, Math.round(6 * density), 0, 0);
+            row.addView(note);
+        }
+
+        // Long-press a passage to edit its note or remove it, keeping the list
+        // itself clean of buttons.
+        row.setOnLongClickListener(v -> {
+            editSaved(p);
+            return true;
+        });
+
+        View rule = new View(this);
+        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, Math.max(1, Math.round(density)));
+        lp.topMargin = Math.round(12 * density);
+        rule.setLayoutParams(lp);
+        rule.setBackgroundColor(RULE);
+        row.addView(rule);
+        return row;
+    }
+
+    private void editSaved(SavedPassages.Passage p) {
+        final EditText input = new EditText(this);
+        input.setText(p.note);
+        input.setHint("Note");
+        int pad = Math.round(20 * getResources().getDisplayMetrics().density);
+        FrameLayout wrap = new FrameLayout(this);
+        wrap.setPadding(pad, pad / 2, pad, 0);
+        wrap.addView(input);
+
+        new AlertDialog.Builder(this)
+                .setTitle(p.citation)
+                .setView(wrap)
+                .setPositiveButton("Save note", (d, w) -> {
+                    SavedPassages.setNote(this, p.id, input.getText().toString());
+                    bindSaved();
+                })
+                .setNeutralButton("Remove", (d, w) -> {
+                    SavedPassages.remove(this, p.id);
+                    bindSaved();
+                })
+                .setNegativeButton("Cancel", null)
+                .show();
+    }
+
+    private void copyAllSaved() {
+        ClipboardManager cb = getSystemService(ClipboardManager.class);
+        if (cb == null) return;
+        cb.setPrimaryClip(ClipData.newPlainText("Saved passages",
+                SavedPassages.asPlainText(this)));
+        Toast.makeText(this, "Copied", Toast.LENGTH_SHORT).show();
     }
 
     // ------------------------------------------------------------ text tab

@@ -75,6 +75,35 @@
                     android:layout_height="2dp"
                     android:background="#E9E2D4" />
             </LinearLayout>
+
+            <LinearLayout
+                android:id="@+id/tabSaved"
+                android:layout_width="0dp"
+                android:layout_weight="1"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:background="?android:attr/selectableItemBackground"
+                android:clickable="true"
+                android:focusable="true">
+
+                <TextView
+                    android:id="@+id/tabSavedLabel"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:gravity="center"
+                    android:paddingTop="14dp"
+                    android:paddingBottom="12dp"
+                    android:text="Saved"
+                    android:textSize="15sp"
+                    android:letterSpacing="0.04"
+                    android:textIsSelectable="false" />
+
+                <View
+                    android:id="@+id/tabSavedUnderline"
+                    android:layout_width="match_parent"
+                    android:layout_height="2dp"
+                    android:background="#E9E2D4" />
+            </LinearLayout>
         </LinearLayout>
 
         <FrameLayout
@@ -397,6 +426,66 @@
                         android:lineSpacingMultiplier="1.5"
                         android:textColor="#1E1E1E"
                         android:fontFamily="serif" />
+
+                </LinearLayout>
+            </ScrollView>
+
+            <!-- ==================== SAVED ==================== -->
+            <ScrollView
+                android:id="@+id/savedScroll"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:fillViewport="true"
+                android:visibility="gone">
+
+                <LinearLayout
+                    android:id="@+id/savedContent"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:padding="24dp">
+
+                    <TextView
+                        android:id="@+id/tvSavedTitle"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Saved"
+                        android:textSize="30sp"
+                        android:textColor="#1A1A1A"
+                        android:fontFamily="serif" />
+
+                    <TextView
+                        android:id="@+id/tvSavedHint"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="8dp"
+                        android:textSize="15sp"
+                        android:lineSpacingMultiplier="1.4"
+                        android:textColor="#7A6646" />
+
+                    <TextView
+                        android:id="@+id/btnCopyAll"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="14dp"
+                        android:gravity="center"
+                        android:padding="12dp"
+                        android:text="Copy all"
+                        android:textSize="15sp"
+                        android:textColor="#7A6646"
+                        android:background="?android:attr/selectableItemBackground"
+                        android:clickable="true"
+                        android:focusable="true"
+                        android:textIsSelectable="false"
+                        android:visibility="gone" />
+
+                    <!-- Passages are added here in code, in Course order. -->
+                    <LinearLayout
+                        android:id="@+id/savedList"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="10dp"
+                        android:orientation="vertical" />
 
                 </LinearLayout>
             </ScrollView>

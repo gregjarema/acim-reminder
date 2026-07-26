@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Menu item we add to the text-selection action mode. Declared here so it
+         has a stable generated id without needing a menu XML file. -->
+    <item name="action_save_passage" type="id" />
+</resources>

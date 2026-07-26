@@ -74,6 +74,26 @@ becomes reachable once it lands.
 
 ---
 
+## Saved passages
+
+Highlight anything in the Workbook or the Text and choose **Save passage** from
+the selection menu that appears — the same menu as Copy and Share, so there's no
+new gesture. You can add a note while saving, and long-press a saved passage
+later to edit that note or remove it.
+
+They collect on the **Saved** tab in Course order — `T-13.II.5`, `W-104.3` —
+not in the order you happened to save them. The chapter and section come from
+the day's label; the paragraph is recovered by scanning back to the nearest
+paragraph number in the reading itself.
+
+Each saved passage keeps **its own copy of the text**. Anchoring by position in
+the lesson would break every time the readings are rebuilt from source, which
+happens whenever more Text days are transcribed.
+
+**Copy all** puts the whole collection on the clipboard as plain text.
+
+---
+
 ## What it does
 
 - **Reminders:** every hour on the hour from **06:00 to 22:00** (17 times a day)
