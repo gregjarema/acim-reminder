@@ -74,6 +74,29 @@ becomes reachable once it lands.
 
 ---
 
+## Playing the videos
+
+Both tabs play Marianne's video inline. Everything about how that works is
+shaped by one constraint: **these videos are whitelisted to specific domains**,
+so Vimeo's embed player refuses to run anywhere else. The app therefore loads
+Vimeo's ordinary watch page in a WebView, and the page's own chrome is hidden
+afterwards by walking up from the player element and hiding its siblings.
+
+That constraint decides the rest:
+
+- **Media buttons and lock-screen controls** work through a MediaSession in a
+  foreground service. Its callbacks drive the video by injecting script into the
+  page — since the watch page is the top-level document, the `<video>` element
+  is reachable, and that's the only handle on playback there is.
+- **Audio keeps playing** when you leave the app, because that service is of
+  type `mediaPlayback`. Without one, Android may silence the app as soon as it
+  leaves the screen.
+- **Listen only** hides the picture and keeps the sound. There's no audio-only
+  stream to switch to, so it shrinks the player to a 1px *invisible* box rather
+  than removing it — a WebView with no size stops playing altogether.
+
+---
+
 ## Saved passages
 
 Highlight anything in the Workbook or the Text and choose **Save passage** from
