@@ -70,16 +70,49 @@ public final class Lesson {
     }
 
     /**
-     * The idea to show — the fuller {@link #meditation} form when we have one,
-     * otherwise the one-line {@link #phrase}. Trailing whitespace is trimmed and
-     * a stray double period ("truth.." -> "truth.") is tidied, while a genuine
-     * ellipsis is left alone. May contain a single '\n' between two verse lines.
+     * <b>The lesson's own idea</b> — what the lesson is called, and the line
+     * that belongs in the heading, on the wallpaper and at the top of a
+     * reminder: "I seek but what belongs to me in truth."
+     *
+     * This is deliberately NOT {@link #meditation}. The two are different
+     * things: Lesson 104's idea is that single line, while its meditation is
+     * the fuller verse that continues "And joy and peace are my inheritance."
+     * Showing the verse as the heading bled the practice text into the lesson's
+     * own title.
      */
+    public String idea() {
+        return tidy(phrase);
+    }
+
+    /**
+     * The fuller form to hold during practice, falling back to the idea when a
+     * lesson gives no separate verse. May contain '\n' between verse lines.
+     */
+    public String meditationText() {
+        String s = meditationText != null && !meditationText.isEmpty()
+                ? meditationText
+                : (meditation != null && !meditation.isEmpty() ? meditation : phrase);
+        return tidy(s);
+    }
+
+    /**
+     * Trim, and tidy a stray double period ("truth.." -> "truth.") while
+     * leaving a genuine ellipsis alone.
+     */
+    private static String tidy(String s) {
+        if (s == null) return "";
+        return s.trim().replaceAll("(?<!\\.)\\.\\.$", ".");
+    }
+
+    /**
+     * The idea to show — kept for callers that want the fuller verse.
+     * @deprecated prefer {@link #idea()} for headings and {@link #meditationText()}
+     *             for practice text; this conflated the two.
+     */
+    @Deprecated
     public String ideaText() {
         String s = (meditation != null && !meditation.isEmpty()) ? meditation : phrase;
-        if (s == null) return "";
-        s = s.trim().replaceAll("(?<!\\.)\\.\\.$", ".");
-        return s;
+        return tidy(s);
     }
 
     /** The first line of {@link #ideaText()} — the notification headline. */

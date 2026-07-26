@@ -122,7 +122,7 @@ public class LessonWallpaperService extends WallpaperService {
 
             StaticLayout labelLayout = build(
                     lesson.title.toUpperCase(), label, textWidth);
-            StaticLayout ideaLayout = build(lesson.ideaText(), idea, textWidth);
+            StaticLayout ideaLayout = build(lesson.idea(), idea, textWidth);
 
             // Sit the block slightly above centre: the lower half of a home
             // screen is where icons and the dock live.

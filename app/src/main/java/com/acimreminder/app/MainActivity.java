@@ -432,7 +432,7 @@ public class MainActivity extends Activity implements Playback.Controller {
     private void bindToday() {
         Lesson today = Lessons.today(this);
         ((TextView) findViewById(R.id.tvTitle)).setText(today.title);
-        ((TextView) findViewById(R.id.tvSubtitle)).setText(today.ideaText());
+        ((TextView) findViewById(R.id.tvSubtitle)).setText(today.idea());
         ((TextView) findViewById(R.id.tvBody)).setText(asHtml(today.body));
 
         // The workbook sets the practice, and it changes constantly. Some days
@@ -524,7 +524,7 @@ public class MainActivity extends Activity implements Playback.Controller {
         int current = Lessons.today(this).number;
         for (int i = 0; i < all.size(); i++) {
             Lesson l = all.get(i);
-            labels[i] = l.title + " — " + l.ideaHeadline();
+            labels[i] = l.title + " — " + l.idea();
             if (l.number == current) checked = i;
         }
 
@@ -649,6 +649,9 @@ public class MainActivity extends Activity implements Playback.Controller {
         row.addView(cite);
 
         TextView body = new TextView(this);
+        // Selectable text swallows long-press, which is why long-pressing a
+        // saved passage did nothing. These rows are read, not selected.
+        body.setTextIsSelectable(false);
         body.setText(p.text);
         body.setTextSize(16);
         body.setLineSpacing(0, 1.4f);
@@ -659,6 +662,7 @@ public class MainActivity extends Activity implements Playback.Controller {
 
         if (!p.note.isEmpty()) {
             TextView note = new TextView(this);
+            note.setTextIsSelectable(false);
             note.setText("— " + p.note);
             note.setTextSize(14);
             note.setTextColor(0xFF7A6646);
@@ -666,8 +670,16 @@ public class MainActivity extends Activity implements Playback.Controller {
             row.addView(note);
         }
 
-        // Long-press a passage to edit its note or remove it, keeping the list
-        // itself clean of buttons.
+        // Visible controls rather than a hidden long-press: there's no way to
+        // discover a gesture, and nothing else on this screen hints at one.
+        LinearLayout actions = new LinearLayout(this);
+        actions.setOrientation(LinearLayout.HORIZONTAL);
+        actions.setPadding(0, Math.round(8 * density), 0, 0);
+        actions.addView(rowAction(p.note.isEmpty() ? "Add note" : "Edit note",
+                v -> editSaved(p), density));
+        actions.addView(rowAction("Delete", v -> confirmDelete(p), density));
+        row.addView(actions);
+
         row.setOnLongClickListener(v -> {
             editSaved(p);
             return true;
@@ -681,6 +693,34 @@ public class MainActivity extends Activity implements Playback.Controller {
         rule.setBackgroundColor(RULE);
         row.addView(rule);
         return row;
+    }
+
+    /** A small text button for the saved-passage rows. */
+    private TextView rowAction(String label, View.OnClickListener onClick, float density) {
+        TextView t = new TextView(this);
+        t.setText(label);
+        t.setTextSize(14);
+        t.setTextColor(SELECTED);
+        t.setTextIsSelectable(false);
+        t.setPadding(0, Math.round(6 * density), Math.round(22 * density),
+                Math.round(6 * density));
+        t.setBackgroundResource(android.R.drawable.list_selector_background);
+        t.setOnClickListener(onClick);
+        return t;
+    }
+
+    /** Deleting a passage can't be undone, so ask first. */
+    private void confirmDelete(SavedPassages.Passage p) {
+        new AlertDialog.Builder(this)
+                .setTitle("Delete " + p.citation + "?")
+                .setMessage(p.text.length() > 160 ? p.text.substring(0, 160) + "…" : p.text)
+                .setPositiveButton("Delete", (d, w) -> {
+                    SavedPassages.remove(this, p.id);
+                    bindSaved();
+                    Toast.makeText(this, "Deleted", Toast.LENGTH_SHORT).show();
+                })
+                .setNegativeButton("Keep", null)
+                .show();
     }
 
     private void editSaved(SavedPassages.Passage p) {

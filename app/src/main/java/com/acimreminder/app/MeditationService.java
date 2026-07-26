@@ -160,7 +160,7 @@ public class MeditationService extends Service {
         long base = SystemClock.elapsedRealtime() + (endTime - System.currentTimeMillis());
         // The fuller two-line verse when the lesson has one, so the couplet you're
         // holding stays in front of you for the whole sitting.
-        String idea = Lessons.today(this).ideaText();
+        String idea = Lessons.today(this).meditationText();
 
         RemoteViews small = new RemoteViews(getPackageName(), R.layout.notif_meditation_collapsed);
         small.setChronometer(R.id.notif_chrono, base, null, true);
@@ -194,7 +194,7 @@ public class MeditationService extends Service {
         return new NotificationCompat.Builder(this, Notify.CH_MEDITATION)
                 .setSmallIcon(R.drawable.ic_stat_bell)
                 .setContentTitle("Practice complete")
-                .setContentText(Lessons.today(this).ideaHeadline())
+                .setContentText(Lessons.today(this).idea())
                 .setOngoing(false)
                 .setOnlyAlertOnce(true)
                 .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)

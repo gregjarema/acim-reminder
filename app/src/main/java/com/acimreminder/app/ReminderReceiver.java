@@ -35,14 +35,14 @@ public class ReminderReceiver extends BroadcastReceiver {
     private void postReminder(Context ctx, int hour, int minute, boolean sitting) {
         int notifId = NOTIF_BASE + (hour >= 0 ? hour * 100 + minute : 0);
         Lesson lesson = Lessons.today(ctx);
-        // The headline is the lesson's idea. Beneath it go the lines the lesson
-        // gives you to hold during practice — often more than one, which is why
-        // this expands rather than truncating.
-        String headline = lesson.ideaHeadline();
-        String rest = lesson.meditationText == null || lesson.meditationText.isEmpty()
-                ? lesson.ideaRest()
-                : lesson.meditationText;
-        if (rest.equals(headline)) rest = "";   // don't say the same line twice
+        // The heading is the lesson's own idea; the verse to hold during
+        // practice goes beneath it. Conflating the two put the practice text
+        // where the lesson's title belongs.
+        String headline = lesson.idea();
+        String rest = lesson.meditationText();
+        // A lesson with no separate verse falls back to its idea — don't print
+        // the same line twice. Compare ignoring the line breaks a verse adds.
+        if (rest.replace("\n", " ").equals(headline)) rest = "";
 
         // Tapping the body opens the app to the full lesson.
         Intent open = new Intent(ctx, MainActivity.class)

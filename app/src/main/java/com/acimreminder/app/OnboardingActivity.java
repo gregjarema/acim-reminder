@@ -145,7 +145,7 @@ public class OnboardingActivity extends Activity {
         final String[] labels = new String[all.size()];
         for (int i = 0; i < all.size(); i++) {
             Lesson l = all.get(i);
-            labels[i] = l.title + " — " + l.ideaHeadline();
+            labels[i] = l.title + " — " + l.idea();
         }
 
         new AlertDialog.Builder(this)
