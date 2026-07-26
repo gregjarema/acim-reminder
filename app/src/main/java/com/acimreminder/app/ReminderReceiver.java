@@ -21,9 +21,10 @@ public class ReminderReceiver extends BroadcastReceiver {
     public void onReceive(Context ctx, Intent intent) {
         int hour = intent.getIntExtra(Scheduler.EXTRA_HOUR, -1);
         int minute = intent.getIntExtra(Scheduler.EXTRA_MINUTE, 0);
+        boolean sitting = intent.getBooleanExtra(Scheduler.EXTRA_SITTING, true);
 
         Notify.ensureChannels(ctx);
-        postReminder(ctx, hour, minute);
+        postReminder(ctx, hour, minute, sitting);
 
         // Keep the cycle going. Re-arm the whole day rather than just this slot:
         // the lesson changes at midnight and the next one may want entirely
@@ -31,7 +32,7 @@ public class ReminderReceiver extends BroadcastReceiver {
         Scheduler.scheduleAll(ctx);
     }
 
-    private void postReminder(Context ctx, int hour, int minute) {
+    private void postReminder(Context ctx, int hour, int minute, boolean sitting) {
         int notifId = NOTIF_BASE + (hour >= 0 ? hour * 100 + minute : 0);
         Lesson lesson = Lessons.today(ctx);
         // The headline is the lesson's idea. Beneath it go the lines the lesson
@@ -68,10 +69,20 @@ public class ReminderReceiver extends BroadcastReceiver {
                 .setPriority(NotificationCompat.PRIORITY_HIGH)
                 .setAutoCancel(true)
                 .setContentIntent(openPi);
-        // Some lessons ask for no sitting at all — only that you remember the
-        // idea. Offering "Begin" on those days would invent a practice the
-        // workbook didn't ask for.
-        if (lesson.hasTimedPractice()) {
+
+        // Say which of the day's two tracks this is. A lesson asking for
+        // fifteen minutes morning and evening plus hourly remembrances sends
+        // both kinds, and they ask very different things of you.
+        if (lesson.hasTimedPractice() && sitting) {
+            b.setSubText(lesson.practiceMinutes + " min practice");
+        } else if (lesson.hourlyRemembrance && !sitting) {
+            b.setSubText("A moment's remembrance");
+        }
+
+        // "Begin" belongs on a sitting. On a passing remembrance, or a lesson
+        // that asks for no sitting at all, offering it would invent a practice
+        // the workbook didn't ask for.
+        if (lesson.hasTimedPractice() && sitting) {
             b.addAction(R.drawable.ic_stat_bell,
                     "Begin " + lesson.practiceLabel(), beginPi);
         }

@@ -77,6 +77,18 @@
             android:exported="false"
             android:foregroundServiceType="mediaPlayback" />
 
+        <!-- Keeps Marianne's video playing when you leave the screen, and hosts
+             the MediaSession that headphone buttons and the lock screen talk to. -->
+        <service
+            android:name=".PlaybackService"
+            android:exported="false"
+            android:foregroundServiceType="mediaPlayback" />
+
+        <!-- Play/Pause/Stop on the playback notification. -->
+        <receiver
+            android:name=".PlaybackControlReceiver"
+            android:exported="false" />
+
         <!-- Receives each scheduled reminder alarm and posts the notification. -->
         <receiver
             android:name=".ReminderReceiver"

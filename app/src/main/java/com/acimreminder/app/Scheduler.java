@@ -36,6 +36,8 @@ public final class Scheduler {
     static final String ACTION_REMIND = "com.acimreminder.app.REMIND";
     static final String EXTRA_HOUR = "hour";
     static final String EXTRA_MINUTE = "minute";
+    /** True when this slot is one of the lesson's sittings, not a passing nudge. */
+    static final String EXTRA_SITTING = "sitting";
 
     /**
      * Arm (or re-arm) today's reminders. Safe to call repeatedly.
@@ -51,7 +53,7 @@ public final class Scheduler {
         Set<Integer> wanted = new HashSet<>();
         for (int[] hm : slots) {
             wanted.add(slotId(hm[0], hm[1]));
-            scheduleSlot(ctx, hm[0], hm[1]);
+            scheduleSlot(ctx, hm[0], hm[1], hm.length > 2 && hm[2] == 1);
         }
         // Clear anything previously armed that today doesn't want.
         for (int hour = START_HOUR; hour <= END_HOUR; hour++) {
@@ -75,14 +77,17 @@ public final class Scheduler {
     static List<int[]> slotsFor(Lesson lesson) {
         // The sittings, plus — where the lesson asks for it — an hourly nudge in
         // between. A lesson that already sits hourly needs no second track.
+        // Each slot carries whether it's a sitting (1) or a passing
+        // remembrance (0), so the notification can say which one it is.
+        // Sittings are added first, so a time that is both reads as a sitting.
         Set<Integer> seen = new HashSet<>();
         List<int[]> out = new ArrayList<>();
         for (int[] hm : sittingSlots(lesson)) {
-            if (seen.add(slotId(hm[0], hm[1]))) out.add(hm);
+            if (seen.add(slotId(hm[0], hm[1]))) out.add(new int[]{hm[0], hm[1], 1});
         }
         if (lesson.hourlyRemembrance) {
             for (int hour = START_HOUR; hour <= END_HOUR; hour++) {
-                if (seen.add(slotId(hour, 0))) out.add(new int[]{hour, 0});
+                if (seen.add(slotId(hour, 0))) out.add(new int[]{hour, 0, 0});
             }
         }
         return out;
@@ -127,11 +132,11 @@ public final class Scheduler {
     }
 
     /** Arm the next occurrence of a single slot. */
-    public static void scheduleSlot(Context ctx, int hour, int minute) {
+    public static void scheduleSlot(Context ctx, int hour, int minute, boolean sitting) {
         AlarmManager am = ctx.getSystemService(AlarmManager.class);
         if (am == null) return;
 
-        PendingIntent pi = reminderPendingIntent(ctx, hour, minute);
+        PendingIntent pi = reminderPendingIntent(ctx, hour, minute, sitting);
         long triggerAt = nextTimeFor(hour, minute);
 
         try {
@@ -153,14 +158,16 @@ public final class Scheduler {
     static void cancelSlot(Context ctx, int hour, int minute) {
         AlarmManager am = ctx.getSystemService(AlarmManager.class);
         if (am == null) return;
-        am.cancel(reminderPendingIntent(ctx, hour, minute));
+        am.cancel(reminderPendingIntent(ctx, hour, minute, false));
     }
 
-    private static PendingIntent reminderPendingIntent(Context ctx, int hour, int minute) {
+    private static PendingIntent reminderPendingIntent(Context ctx, int hour, int minute,
+                                                       boolean sitting) {
         Intent i = new Intent(ctx, ReminderReceiver.class)
                 .setAction(ACTION_REMIND)
                 .putExtra(EXTRA_HOUR, hour)
-                .putExtra(EXTRA_MINUTE, minute);
+                .putExtra(EXTRA_MINUTE, minute)
+                .putExtra(EXTRA_SITTING, sitting);
         return PendingIntent.getBroadcast(
                 ctx, slotId(hour, minute), i,
                 PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);

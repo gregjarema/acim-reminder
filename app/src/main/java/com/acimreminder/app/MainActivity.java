@@ -50,7 +50,7 @@ import java.util.List;
  * First-run permissions live in {@link OnboardingActivity}, so this screen
  * stays clean.
  */
-public class MainActivity extends Activity {
+public class MainActivity extends Activity implements Playback.Controller {
 
     /** Which tab you were last on, so reopening the app lands where you left. */
     private static final String KEY_TAB = "selected_tab";
@@ -64,6 +64,9 @@ public class MainActivity extends Activity {
 
     private WebView webView;          // Workbook player
     private WebView textWebView;      // Text player
+    /** Whichever player was last started, or null. Tracked explicitly because
+     *  "listen only" hides the box, so visibility can't answer this. */
+    private WebView activePlayer;
     private FrameLayout fullscreenContainer;
     private View fullscreenView;
     private WebChromeClient.CustomViewCallback fullscreenCallback;
@@ -122,6 +125,11 @@ public class MainActivity extends Activity {
 
         findViewById(R.id.btnLessonJump).setOnClickListener(v -> showJumpToLessonDialog());
         findViewById(R.id.btnWallpaper).setOnClickListener(v -> chooseWallpaper());
+        findViewById(R.id.btnListenOnly).setOnClickListener(
+                v -> toggleListenOnly(R.id.videoBox, R.id.btnListenOnly));
+        findViewById(R.id.btnTextListenOnly).setOnClickListener(
+                v -> toggleListenOnly(R.id.textVideoBox, R.id.btnTextListenOnly));
+        Playback.setController(this);
 
         findViewById(R.id.btnTextNext).setOnClickListener(v -> markTextRead());
         findViewById(R.id.btnTextPrev).setOnClickListener(v -> goToPreviousTextDay());
@@ -184,6 +192,97 @@ public class MainActivity extends Activity {
     /** Silence a hidden player without tearing down the page it has loaded. */
     private void pausePlayer(WebView player) {
         if (player != null) player.onPause();
+    }
+
+    // ---------------------------------------------------------- playback
+
+    /**
+     * The player currently in use, or null if nothing has been started. The two
+     * WebViews never play at once — switching tabs pauses the other.
+     */
+    private WebView activePlayer() {
+        return activePlayer;
+    }
+
+    /**
+     * Drive the &lt;video&gt; element directly. We load Vimeo's own page as the
+     * top-level document, so injected script can reach the element — which is
+     * the only handle we have on playback, since the video can't be played
+     * anywhere but there.
+     */
+    private void videoScript(String js) {
+        WebView p = activePlayer();
+        if (p == null) return;
+        p.evaluateJavascript(
+                "(function(){try{var v=document.querySelector('video');if(v){" + js
+                        + "}}catch(e){}})();", null);
+    }
+
+    @Override
+    public void playbackPlay() {
+        runOnUiThread(() -> {
+            WebView p = activePlayer();
+            if (p != null) p.onResume();
+            videoScript("v.play();");
+        });
+    }
+
+    @Override
+    public void playbackPause() {
+        runOnUiThread(() -> videoScript("v.pause();"));
+    }
+
+    @Override
+    public void playbackStop() {
+        runOnUiThread(() -> {
+            videoScript("v.pause();");
+            stopPlaybackService();
+            collapsePlayers();
+        });
+    }
+
+    private void startPlaybackService(String title) {
+        Playback.setTitle(title);
+        Playback.setController(this);
+        ContextCompat.startForegroundService(this,
+                new Intent(this, PlaybackService.class)
+                        .setAction(PlaybackService.ACTION_START));
+    }
+
+    private void stopPlaybackService() {
+        startService(new Intent(this, PlaybackService.class)
+                .setAction(PlaybackService.ACTION_STOP));
+    }
+
+    /** Put both players away and show their "Watch" links again. */
+    private void collapsePlayers() {
+        activePlayer = null;
+        resetPlayer(webView, R.id.btnVideo, R.id.videoBox);
+        resetPlayer(textWebView, R.id.btnTextVideo, R.id.textVideoBox);
+        findViewById(R.id.btnVideo).setVisibility(
+                Lessons.today(this).video.isEmpty() ? View.GONE : View.VISIBLE);
+        TextDay d = TextDays.current(this);
+        findViewById(R.id.btnTextVideo).setVisibility(
+                d == null || d.video.isEmpty() ? View.GONE : View.VISIBLE);
+        findViewById(R.id.btnListenOnly).setVisibility(View.GONE);
+        findViewById(R.id.btnTextListenOnly).setVisibility(View.GONE);
+    }
+
+    /**
+     * Hide the picture but keep the sound. There's no audio-only stream to
+     * switch to — the video plays inside Vimeo's page — so "listen only" means
+     * shrinking the player away while it carries on. The box is left INVISIBLE
+     * at 1px rather than GONE: a WebView with no size stops playing.
+     */
+    private void toggleListenOnly(int boxId, int toggleId) {
+        View box = findViewById(boxId);
+        TextView toggle = findViewById(toggleId);
+        boolean hiding = box.getVisibility() == View.VISIBLE;
+        box.setVisibility(hiding ? View.INVISIBLE : View.VISIBLE);
+        ViewGroup.LayoutParams lp = box.getLayoutParams();
+        lp.height = hiding ? 1 : Math.round(320 * getResources().getDisplayMetrics().density);
+        box.setLayoutParams(lp);
+        toggle.setText(hiding ? "Show video" : "Listen only (hide video)");
     }
 
     // ------------------------------------------------------------- players
@@ -274,6 +373,18 @@ public class MainActivity extends Activity {
             findViewById(boxId).setVisibility(View.VISIBLE);
             player.onResume();
             player.loadUrl(url);
+
+            // Media buttons, lock-screen controls and background audio all hang
+            // off the foreground service; without it Android may silence us the
+            // moment the app leaves the screen.
+            activePlayer = player;
+            boolean isText = player == textWebView;
+            findViewById(isText ? R.id.btnTextListenOnly : R.id.btnListenOnly)
+                    .setVisibility(View.VISIBLE);
+            TextDay day = TextDays.current(this);
+            startPlaybackService(isText
+                    ? (day == null ? "" : day.shortTitle())
+                    : Lessons.today(this).title);
         } catch (Exception e) {
             Toast.makeText(this, "Couldn't play the video.", Toast.LENGTH_SHORT).show();
         }
@@ -771,6 +882,8 @@ public class MainActivity extends Activity {
 
     @Override
     protected void onDestroy() {
+        Playback.clearController(this);
+        stopPlaybackService();
         mainHandler.removeCallbacksAndMessages(null);
         if (webView != null) webView.destroy();
         if (textWebView != null) textWebView.destroy();
