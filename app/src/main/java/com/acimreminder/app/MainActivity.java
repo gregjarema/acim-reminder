@@ -19,11 +19,15 @@ import android.text.TextPaint;
 import android.text.style.MetricAffectingSpan;
 import android.text.style.RelativeSizeSpan;
 import android.text.style.SuperscriptSpan;
+import android.transition.Fade;
+import android.transition.TransitionManager;
 import android.view.ActionMode;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
+import android.view.animation.Interpolator;
+import android.view.animation.PathInterpolator;
 import android.webkit.WebChromeClient;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
@@ -67,6 +71,13 @@ public class MainActivity extends Activity implements Playback.Controller {
     private static final int SELECTED = 0xFF7A6646;   // the app's brown
     private static final int UNSELECTED = 0xFF9A9086;
     private static final int RULE = 0xFFE9E2D4;       // the faint divider line
+
+    // Motion, kept to one quiet vocabulary so the whole app moves like it's
+    // breathing rather than reacting: a single gentle ease, and two durations —
+    // one for things settling in, a quicker one for things stepping aside.
+    private static final long ANIM_IN = 260L;
+    private static final long ANIM_OUT = 130L;
+    private final Interpolator ease = new PathInterpolator(0.4f, 0f, 0.2f, 1f);
 
     private WebView webView;          // Workbook player
     private WebView textWebView;      // Text player
@@ -138,6 +149,7 @@ public class MainActivity extends Activity implements Playback.Controller {
         bindTextDay();
         refreshMeditationState();
         selectTab(prefs().getInt(KEY_TAB, TAB_WORKBOOK));
+        fadeIn(findViewById(R.id.tabContainer));   // the reading settles in on open
 
         // Arm today's reminders now, and again every time the app is opened.
         Scheduler.scheduleAll(this);
@@ -204,7 +216,7 @@ public class MainActivity extends Activity implements Playback.Controller {
             Updater.dismiss(this, build);
             banner.setVisibility(View.GONE);
         });
-        banner.setVisibility(View.VISIBLE);
+        if (banner.getVisibility() != View.VISIBLE) fadeIn(banner);
     }
 
     // ---------------------------------------------------------------- tabs
@@ -215,9 +227,12 @@ public class MainActivity extends Activity implements Playback.Controller {
         if (tab == TAB_TEXT && findViewById(R.id.tabText).getVisibility() != View.VISIBLE) {
             tab = TAB_WORKBOOK;
         }
+        boolean changed = tab != selectedTab;
         selectedTab = tab;
         prefs().edit().putInt(KEY_TAB, tab).apply();
 
+        // One pane fades out as the next fades in, rather than snapping over.
+        if (changed) softFade(findViewById(R.id.tabContainer));
         findViewById(R.id.workbookScroll).setVisibility(vis(tab == TAB_WORKBOOK));
         findViewById(R.id.textScroll).setVisibility(vis(tab == TAB_TEXT));
         findViewById(R.id.savedScroll).setVisibility(vis(tab == TAB_SAVED));
@@ -225,6 +240,8 @@ public class MainActivity extends Activity implements Playback.Controller {
         paintTab(R.id.tabWorkbookLabel, R.id.tabWorkbookUnderline, tab == TAB_WORKBOOK);
         paintTab(R.id.tabTextLabel, R.id.tabTextUnderline, tab == TAB_TEXT);
         paintTab(R.id.tabSavedLabel, R.id.tabSavedUnderline, tab == TAB_SAVED);
+        if (changed) revealUnderline(tab == TAB_WORKBOOK ? R.id.tabWorkbookUnderline
+                : tab == TAB_TEXT ? R.id.tabTextUnderline : R.id.tabSavedUnderline);
 
         // Leaving a tab stops whatever was playing in it, so switching away
         // doesn't leave Marianne talking from a hidden pane.
@@ -232,6 +249,48 @@ public class MainActivity extends Activity implements Playback.Controller {
         if (tab != TAB_TEXT) pausePlayer(textWebView);
 
         if (tab == TAB_SAVED) bindSaved();
+    }
+
+    // -------------------------------------------------------------- motion
+
+    /** Crossfade whatever visibility changes next inside this container. */
+    private void softFade(ViewGroup container) {
+        Fade fade = new Fade();
+        fade.setDuration(ANIM_IN);
+        fade.setInterpolator(ease);
+        TransitionManager.beginDelayedTransition(container, fade);
+    }
+
+    /** Bring a hidden view in on a gentle fade. */
+    private void fadeIn(View v) {
+        v.animate().cancel();
+        v.setAlpha(0f);
+        v.setVisibility(View.VISIBLE);
+        v.animate().alpha(1f).setDuration(ANIM_IN).setInterpolator(ease).start();
+    }
+
+    /**
+     * Swap the content of a view in place: dim it out, let the caller rebind,
+     * then ease it back. Used when the reading or lesson changes under you, so
+     * the new words arrive rather than jump-cut.
+     */
+    private void refreshWithFade(View content, Runnable rebind) {
+        content.animate().cancel();
+        content.animate().alpha(0f).setDuration(ANIM_OUT).setInterpolator(ease)
+                .withEndAction(() -> {
+                    rebind.run();
+                    content.setAlpha(0f);
+                    content.animate().alpha(1f).setDuration(ANIM_IN)
+                            .setInterpolator(ease).start();
+                }).start();
+    }
+
+    /** The newly selected tab's underline grows out from its centre. */
+    private void revealUnderline(int underlineId) {
+        View u = findViewById(underlineId);
+        u.animate().cancel();
+        u.setScaleX(0.55f);
+        u.animate().scaleX(1f).setDuration(ANIM_IN).setInterpolator(ease).start();
     }
 
     /**
@@ -486,7 +545,7 @@ public class MainActivity extends Activity implements Playback.Controller {
         try {
             if (linkId != 0) findViewById(linkId).setVisibility(View.GONE);
             View box = findViewById(boxId);
-            box.setVisibility(View.VISIBLE);
+            fadeIn(box);
             // Frame the box to the video's 16:9 shape instead of a fixed
             // height, so there's no black band left under the picture. The
             // width isn't known until the box is laid out, so wait for that.
@@ -986,15 +1045,19 @@ public class MainActivity extends Activity implements Playback.Controller {
 
     private void markTextRead() {
         if (TextDays.advance(this)) {
-            bindTextDay();
-            findViewById(R.id.textScroll).scrollTo(0, 0);
+            refreshWithFade(findViewById(R.id.textContent), () -> {
+                bindTextDay();
+                findViewById(R.id.textScroll).scrollTo(0, 0);
+            });
         }
     }
 
     private void goToPreviousTextDay() {
         if (TextDays.goBack(this)) {
-            bindTextDay();
-            findViewById(R.id.textScroll).scrollTo(0, 0);
+            refreshWithFade(findViewById(R.id.textContent), () -> {
+                bindTextDay();
+                findViewById(R.id.textScroll).scrollTo(0, 0);
+            });
         }
     }
 
@@ -1020,9 +1083,11 @@ public class MainActivity extends Activity implements Playback.Controller {
         new AlertDialog.Builder(this)
                 .setTitle("Jump to day")
                 .setSingleChoiceItems(labels, checked, (dialog, which) -> {
-                    TextDays.setCurrent(this, all.get(which).number);
-                    bindTextDay();
-                    findViewById(R.id.textScroll).scrollTo(0, 0);
+                    refreshWithFade(findViewById(R.id.textContent), () -> {
+                        TextDays.setCurrent(this, all.get(which).number);
+                        bindTextDay();
+                        findViewById(R.id.textScroll).scrollTo(0, 0);
+                    });
                     dialog.dismiss();
                 })
                 .setNegativeButton("Cancel", null)
@@ -1060,6 +1125,10 @@ public class MainActivity extends Activity implements Playback.Controller {
 
     /** Show the same live countdown the notification has, in the app too. */
     private void showMeditationActive(long endTime) {
+        // Begin dissolves into the running countdown rather than blinking over.
+        if (chronoMeditation.getVisibility() != View.VISIBLE) {
+            softFade(findViewById(R.id.content));
+        }
         findViewById(R.id.btnBegin).setVisibility(View.GONE);
         chronoMeditation.setVisibility(View.VISIBLE);
         chronoMeditation.setCountDown(true);
@@ -1076,6 +1145,9 @@ public class MainActivity extends Activity implements Playback.Controller {
         if (meditationEndRunnable != null) {
             mainHandler.removeCallbacks(meditationEndRunnable);
             meditationEndRunnable = null;
+        }
+        if (chronoMeditation.getVisibility() == View.VISIBLE) {
+            softFade(findViewById(R.id.content));
         }
         chronoMeditation.stop();
         chronoMeditation.setVisibility(View.GONE);
