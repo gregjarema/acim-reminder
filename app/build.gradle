@@ -18,7 +18,7 @@ android {
         // run number is the one value guaranteed to keep increasing. The app
         // reads the build back out of versionName to know what it's running.
         versionCode ciBuild > 0 ? ciBuild : 29
-        versionName "3.22-even-spacing+build-" + (ciBuild > 0 ? ciBuild : 0)
+        versionName "3.23-preload-both+build-" + (ciBuild > 0 ? ciBuild : 0)
     }
 
     // A stable signing key, so a new build installs OVER the old one.

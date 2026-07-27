@@ -358,16 +358,17 @@ public class MainActivity extends Activity implements Playback.Controller {
     }
 
     /**
-     * Put the players away after a Stop. The Workbook shows its "Watch video"
-     * link again; the Text tab re-shows its preloaded frame, so the player is
-     * always sitting there ready.
+     * Put the players away after a Stop, then re-show each tab's preloaded
+     * frame so the player is always sitting there ready.
      */
     private void collapsePlayers() {
         activePlayer = null;
 
         resetPlayer(webView, R.id.videoBox);
-        findViewById(R.id.btnVideo).setVisibility(
-                Lessons.today(this).video.isEmpty() ? View.GONE : View.VISIBLE);
+        Lesson today = Lessons.today(this);
+        if (today.video != null && !today.video.isEmpty()) {
+            showVideoFrame(webView, 0, R.id.videoBox, today.video);
+        }
 
         resetPlayer(textWebView, R.id.textVideoBox);
         TextDay d = TextDays.current(this);
@@ -646,14 +647,10 @@ public class MainActivity extends Activity implements Playback.Controller {
         if (today.number != boundLessonNumber) {
             boundLessonNumber = today.number;
             resetPlayer(webView, R.id.videoBox);
-
-            View videoLink = findViewById(R.id.btnVideo);
-            if (today.video == null || today.video.isEmpty()) {
-                videoLink.setVisibility(View.GONE);
-            } else {
-                videoLink.setVisibility(View.VISIBLE);
-                videoLink.setOnClickListener(v ->
-                        showVideoFrame(webView, R.id.btnVideo, R.id.videoBox, today.video));
+            // No "Watch" link — the frame is preloaded in place, so the player
+            // is simply there above the lesson, ready for you to press play.
+            if (today.video != null && !today.video.isEmpty()) {
+                showVideoFrame(webView, 0, R.id.videoBox, today.video);
             }
         }
     }

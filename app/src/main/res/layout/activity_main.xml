@@ -214,22 +214,9 @@
                         android:textColor="#7A6646"
                         android:fontFamily="serif" />
 
-                    <TextView
-                        android:id="@+id/btnVideo"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:layout_marginTop="14dp"
-                        android:text="▶  Watch today's lesson video"
-                        android:textSize="15sp"
-                        android:textColor="#7A6646"
-                        android:clickable="true"
-                        android:focusable="true"
-                        android:textIsSelectable="false"
-                        android:paddingTop="4dp"
-                        android:paddingBottom="4dp" />
-
-                    <!-- Plays inline, right above the lesson text, so you can watch (or
-                         just listen) while reading along. Hidden until btnVideo is tapped. -->
+                    <!-- The lesson video, preloaded in place: no "Watch" link to
+                         tap first, just the player sitting ready above the text,
+                         so you can watch (or just listen) while reading along. -->
                     <FrameLayout
                         android:id="@+id/videoBox"
                         android:layout_width="match_parent"
