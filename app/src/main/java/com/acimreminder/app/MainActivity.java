@@ -351,16 +351,23 @@ public class MainActivity extends Activity implements Playback.Controller {
                 .setAction(PlaybackService.ACTION_STOP));
     }
 
-    /** Put both players away and show their "Watch" links again. */
+    /**
+     * Put the players away after a Stop. The Workbook shows its "Watch video"
+     * link again; the Text tab re-shows its preloaded frame, so the player is
+     * always sitting there ready.
+     */
     private void collapsePlayers() {
         activePlayer = null;
-        resetPlayer(webView, R.id.btnVideo, R.id.videoBox);
-        resetPlayer(textWebView, R.id.btnTextVideo, R.id.textVideoBox);
+
+        resetPlayer(webView, R.id.videoBox);
         findViewById(R.id.btnVideo).setVisibility(
                 Lessons.today(this).video.isEmpty() ? View.GONE : View.VISIBLE);
+
+        resetPlayer(textWebView, R.id.textVideoBox);
         TextDay d = TextDays.current(this);
-        findViewById(R.id.btnTextVideo).setVisibility(
-                d == null || d.video.isEmpty() ? View.GONE : View.VISIBLE);
+        if (d != null && !d.video.isEmpty()) {
+            showVideoFrame(textWebView, 0, R.id.textVideoBox, d.video);
+        }
     }
 
     // ------------------------------------------------------------- players
@@ -374,16 +381,39 @@ public class MainActivity extends Activity implements Playback.Controller {
         settings.setDomStorageEnabled(true);
         settings.setMediaPlaybackRequiresUserGesture(false);
 
+        // Let the page tell us when its <video> actually starts and stops. The
+        // foreground media service — the thing that keeps audio alive with the
+        // screen off — then comes up exactly while something is playing, rather
+        // than the moment the frame is merely on screen (it's preloaded now).
+        final WebView self = view;
+        view.addJavascriptInterface(new Object() {
+            @android.webkit.JavascriptInterface
+            public void onPlay()  { mainHandler.post(() -> onVideoPlay(self)); }
+            @android.webkit.JavascriptInterface
+            public void onPause() { mainHandler.post(() -> onVideoPaused()); }
+            @android.webkit.JavascriptInterface
+            public void onEnded() { mainHandler.post(() -> onVideoEnded()); }
+        }, "AndroidPlayback");
+
         view.setWebViewClient(new WebViewClient() {
+            @Override
+            public void onPageStarted(WebView v, String url, android.graphics.Bitmap favicon) {
+                // Injected before Vimeo's own scripts run, so the page never
+                // hears the screen go off and pause the video. See keepPlaying.
+                keepPlaying(v);
+            }
+
             @Override
             public void onPageFinished(WebView v, String url) {
                 // The watch page arrives with Vimeo's header, sign-in bar and
                 // title around the player. Strip them so the box frames the
                 // video. Re-run a couple of times: the page finishes loading
                 // before its own scripts finish laying the player out.
+                keepPlaying(v);
+                hookMediaEvents(v);
                 frameThePlayer(v);
-                mainHandler.postDelayed(() -> frameThePlayer(v), 900);
-                mainHandler.postDelayed(() -> frameThePlayer(v), 2200);
+                mainHandler.postDelayed(() -> { hookMediaEvents(v); frameThePlayer(v); }, 900);
+                mainHandler.postDelayed(() -> { hookMediaEvents(v); frameThePlayer(v); }, 2200);
             }
         });
         view.setWebChromeClient(new WebChromeClient() {
@@ -445,9 +475,9 @@ public class MainActivity extends Activity implements Playback.Controller {
      * link's own access hash matters there — it just plays. Both the Workbook
      * lessons and the Text sessions carry that hash in their URL.
      */
-    private void playInline(WebView player, int linkId, int boxId, String url) {
+    private void showVideoFrame(WebView player, int linkId, int boxId, String url) {
         try {
-            findViewById(linkId).setVisibility(View.GONE);
+            if (linkId != 0) findViewById(linkId).setVisibility(View.GONE);
             View box = findViewById(boxId);
             box.setVisibility(View.VISIBLE);
             // Frame the box to the video's 16:9 shape instead of a fixed
@@ -461,21 +491,74 @@ public class MainActivity extends Activity implements Playback.Controller {
                     box.setLayoutParams(lp);
                 }
             });
+            // Just load the frame — don't start the media service here. It comes
+            // up in onVideoPlay when the video actually plays, so a preloaded
+            // frame you never watch doesn't post a media notification.
             player.onResume();
             player.loadUrl(url);
-
-            // Media buttons, lock-screen controls and background audio all hang
-            // off the foreground service; without it Android may silence us the
-            // moment the app leaves the screen.
-            activePlayer = player;
-            boolean isText = player == textWebView;
-            TextDay day = TextDays.current(this);
-            startPlaybackService(isText
-                    ? (day == null ? "" : day.shortTitle())
-                    : Lessons.today(this).title);
         } catch (Exception e) {
-            Toast.makeText(this, "Couldn't play the video.", Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, "Couldn't load the video.", Toast.LENGTH_SHORT).show();
         }
+    }
+
+    /** The &lt;video&gt; actually started — bring the media service up around it. */
+    private void onVideoPlay(WebView player) {
+        activePlayer = player;
+        boolean isText = player == textWebView;
+        TextDay day = TextDays.current(this);
+        startPlaybackService(isText
+                ? (day == null ? "" : day.shortTitle())
+                : Lessons.today(this).title);
+    }
+
+    /** Paused from the page itself — show that in the notification. */
+    private void onVideoPaused() {
+        if (activePlayer == null) return;
+        startService(new Intent(this, PlaybackService.class)
+                .setAction(PlaybackService.ACTION_PAUSED));
+    }
+
+    /** Played to the end — let the service go. */
+    private void onVideoEnded() {
+        stopPlaybackService();
+    }
+
+    /** Report the &lt;video&gt;'s own play/pause/ended back to the service. */
+    private void hookMediaEvents(WebView v) {
+        v.evaluateJavascript(
+                "(function(){try{var e=document.querySelector('video');"
+                + "if(e&&!e.__acimHooked){e.__acimHooked=true;"
+                + "e.addEventListener('play',function(){try{AndroidPlayback.onPlay();}catch(x){}});"
+                + "e.addEventListener('pause',function(){try{AndroidPlayback.onPause();}catch(x){}});"
+                + "e.addEventListener('ended',function(){try{AndroidPlayback.onEnded();}catch(x){}});"
+                + "}}catch(e){}})();", null);
+    }
+
+    /**
+     * Keep the video playing when the phone is locked.
+     *
+     * A screen-off makes the browser mark the page hidden — document.hidden
+     * flips true and a visibilitychange fires — and Vimeo's player, like most,
+     * pauses on that. Brave and Chrome keep audio going in the background
+     * because they don't surface it to the page; we do the same by hand: pin
+     * document.hidden to false and visibilityState to "visible", and swallow the
+     * visibilitychange before the player's own listener can see it. Paired with
+     * BackgroundWebView (which stops the native side pausing), the audio simply
+     * carries on with the screen off.
+     */
+    private void keepPlaying(WebView v) {
+        v.evaluateJavascript(
+                "(function(){try{"
+                + "function pin(p,val){try{Object.defineProperty(document,p,"
+                + "{configurable:true,get:function(){return val;}});}catch(e){}}"
+                + "pin('hidden',false);pin('visibilityState','visible');"
+                + "pin('webkitHidden',false);pin('webkitVisibilityState','visible');"
+                + "if(!window.__acimVis){window.__acimVis=true;"
+                + "var eat=function(e){e.stopImmediatePropagation();};"
+                + "['visibilitychange','webkitvisibilitychange'].forEach(function(t){"
+                + "document.addEventListener(t,eat,true);"
+                + "window.addEventListener(t,eat,true);});}"
+                + "}catch(e){}})();", null);
     }
 
     /**
@@ -521,8 +604,8 @@ public class MainActivity extends Activity implements Playback.Controller {
                 + "}catch(e){}})();", null);
     }
 
-    /** Collapse a player back to its "Watch" link and stop it loading. */
-    private void resetPlayer(WebView player, int linkId, int boxId) {
+    /** Hide a player and stop it loading. */
+    private void resetPlayer(WebView player, int boxId) {
         hideFullscreen();
         findViewById(boxId).setVisibility(View.GONE);
         player.loadUrl("about:blank");
@@ -556,7 +639,7 @@ public class MainActivity extends Activity implements Playback.Controller {
         // away and back doesn't interrupt something you're watching.
         if (today.number != boundLessonNumber) {
             boundLessonNumber = today.number;
-            resetPlayer(webView, R.id.btnVideo, R.id.videoBox);
+            resetPlayer(webView, R.id.videoBox);
 
             View videoLink = findViewById(R.id.btnVideo);
             if (today.video == null || today.video.isEmpty()) {
@@ -564,7 +647,7 @@ public class MainActivity extends Activity implements Playback.Controller {
             } else {
                 videoLink.setVisibility(View.VISIBLE);
                 videoLink.setOnClickListener(v ->
-                        playInline(webView, R.id.btnVideo, R.id.videoBox, today.video));
+                        showVideoFrame(webView, R.id.btnVideo, R.id.videoBox, today.video));
             }
         }
     }
@@ -889,15 +972,11 @@ public class MainActivity extends Activity implements Playback.Controller {
 
         if (day.number != boundTextDay) {
             boundTextDay = day.number;
-            resetPlayer(textWebView, R.id.btnTextVideo, R.id.textVideoBox);
-
-            View videoLink = findViewById(R.id.btnTextVideo);
-            if (day.video == null || day.video.isEmpty()) {
-                videoLink.setVisibility(View.GONE);
-            } else {
-                videoLink.setVisibility(View.VISIBLE);
-                videoLink.setOnClickListener(v ->
-                        playInline(textWebView, R.id.btnTextVideo, R.id.textVideoBox, day.video));
+            resetPlayer(textWebView, R.id.textVideoBox);
+            // No "Watch this session" link — the frame is preloaded in place, so
+            // the player is simply there, ready for you to press play.
+            if (day.video != null && !day.video.isEmpty()) {
+                showVideoFrame(textWebView, 0, R.id.textVideoBox, day.video);
             }
         }
     }

@@ -356,20 +356,8 @@
                         android:textColor="#7A6646"
                         android:fontFamily="serif" />
 
-                    <TextView
-                        android:id="@+id/btnTextVideo"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:layout_marginTop="14dp"
-                        android:text="▶  Watch this session"
-                        android:textSize="15sp"
-                        android:textColor="#7A6646"
-                        android:clickable="true"
-                        android:focusable="true"
-                        android:textIsSelectable="false"
-                        android:paddingTop="4dp"
-                        android:paddingBottom="4dp" />
-
+                    <!-- The session's video, preloaded in place: no "Watch"
+                         link to tap first, just the player sitting ready. -->
                     <FrameLayout
                         android:id="@+id/textVideoBox"
                         android:layout_width="match_parent"
