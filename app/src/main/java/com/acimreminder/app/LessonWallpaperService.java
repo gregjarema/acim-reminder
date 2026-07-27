@@ -190,18 +190,22 @@ public class LessonWallpaperService extends WallpaperService {
                     lesson.title.toUpperCase(), label, textWidth);
             StaticLayout ideaLayout = build(lesson.idea(), idea, textWidth);
 
-            // Sit the block below the middle of the screen. It used to sit
-            // above it, which put it straight behind the media player's
-            // notification card on the lock screen — the lesson was there and
-            // unreadable exactly when something was playing.
+            // The lock screen leaves exactly one clear band. Above it: the
+            // clock, and the media player's card when something is playing.
+            // Below it: the fingerprint reader, then the shortcuts. Too high
+            // and the lesson is behind the media card; too low and it's behind
+            // the fingerprint. Both have happened.
             //
-            // Measured from the top of the screen rather than as a share of the
-            // leftover space, so a long idea grows downward from the same place
-            // instead of dragging the whole block up.
+            // So the BOTTOM of the block is anchored just above the reader,
+            // and a longer idea grows upward into the gap rather than downward
+            // into it. The ceiling keeps it out of the card overhead.
             int gap = Math.round(18 * density);
             int block = labelLayout.getHeight() + gap + ideaLayout.getHeight();
-            float lowest = height - margin - block - gap * 2f;   // keep the rule on screen
-            float top = Math.max(margin, Math.min(height * 0.60f, lowest));
+            float ruleGap = gap * 1.5f;
+            float top = height * 0.64f - block - ruleGap;
+            float highest = Math.max(margin, height * 0.42f);
+            float lowest = height - margin - block - ruleGap;   // keep the rule on screen
+            top = Math.max(highest, Math.min(top, lowest));
 
             canvas.save();
             canvas.translate(margin, top);
