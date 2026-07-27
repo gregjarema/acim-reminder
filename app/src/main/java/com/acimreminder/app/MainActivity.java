@@ -448,7 +448,19 @@ public class MainActivity extends Activity implements Playback.Controller {
     private void playInline(WebView player, int linkId, int boxId, String url) {
         try {
             findViewById(linkId).setVisibility(View.GONE);
-            findViewById(boxId).setVisibility(View.VISIBLE);
+            View box = findViewById(boxId);
+            box.setVisibility(View.VISIBLE);
+            // Frame the box to the video's 16:9 shape instead of a fixed
+            // height, so there's no black band left under the picture. The
+            // width isn't known until the box is laid out, so wait for that.
+            box.post(() -> {
+                int w = box.getWidth();
+                if (w > 0) {
+                    ViewGroup.LayoutParams lp = box.getLayoutParams();
+                    lp.height = Math.round(w * 9f / 16f);
+                    box.setLayoutParams(lp);
+                }
+            });
             player.onResume();
             player.loadUrl(url);
 
@@ -864,14 +876,12 @@ public class MainActivity extends Activity implements Playback.Controller {
 
         ((TextView) findViewById(R.id.tvTextBody)).setText(asHtml(day.body));
 
-        // "Mark read" is the primary action; at the end of what's transcribed
-        // so far, say so instead of offering a day that doesn't exist yet.
-        TextView next = findViewById(R.id.btnTextNext);
+        // "Next" moves you on and marks this session read. When there's no
+        // further session yet, dim it the same way Previous dims at Day 1.
+        View next = findViewById(R.id.btnTextNext);
         boolean hasNext = TextDays.hasNext(this);
         next.setEnabled(hasNext);
-        next.setText(hasNext
-                ? "Mark read — on to Day " + (day.number + 1)
-                : "Day " + day.number + " — the latest session so far");
+        next.setAlpha(hasNext ? 1f : 0.4f);
 
         View prev = findViewById(R.id.btnTextPrev);
         prev.setEnabled(TextDays.hasPrevious(this));
