@@ -1,5 +1,6 @@
 package com.acimreminder.app;
 
+import android.animation.ObjectAnimator;
 import android.app.Activity;
 import android.app.AlertDialog;
 import android.app.WallpaperManager;
@@ -103,6 +104,11 @@ public class MainActivity extends Activity implements Playback.Controller {
     private final Map<Integer, Integer> boxLoad = new HashMap<>();
     private final Set<Integer> boxRevealed = new HashSet<>();
 
+    // The launch veil: held until the first video frames, then faded away.
+    private boolean splashDone;
+    private int splashBoxId;
+    private ObjectAnimator splashPulse;
+
     private Chronometer chronoMeditation;
     private final Handler mainHandler = new Handler(Looper.getMainLooper());
     private Runnable meditationEndRunnable;
@@ -161,6 +167,7 @@ public class MainActivity extends Activity implements Playback.Controller {
         refreshMeditationState();
         selectTab(prefs().getInt(KEY_TAB, TAB_WORKBOOK));
         fadeIn(findViewById(R.id.tabContainer));   // the reading settles in on open
+        armSplash();
 
         // Arm today's reminders now, and again every time the app is opened.
         Scheduler.scheduleAll(this);
@@ -238,15 +245,23 @@ public class MainActivity extends Activity implements Playback.Controller {
         if (tab == TAB_TEXT && findViewById(R.id.tabText).getVisibility() != View.VISIBLE) {
             tab = TAB_WORKBOOK;
         }
-        boolean changed = tab != selectedTab;
+        int previous = selectedTab;
+        boolean changed = tab != previous;
         selectedTab = tab;
         prefs().edit().putInt(KEY_TAB, tab).apply();
 
-        // One pane fades out as the next fades in, rather than snapping over.
+        // One pane fades out as the next fades in — and the incoming pane
+        // slides a touch in the direction of travel, so moving right feels like
+        // moving right, rather than snapping over.
         if (changed) softFade(findViewById(R.id.tabContainer));
         findViewById(R.id.workbookScroll).setVisibility(vis(tab == TAB_WORKBOOK));
         findViewById(R.id.textScroll).setVisibility(vis(tab == TAB_TEXT));
         findViewById(R.id.savedScroll).setVisibility(vis(tab == TAB_SAVED));
+        if (changed) {
+            int shownId = tab == TAB_WORKBOOK ? R.id.workbookScroll
+                    : tab == TAB_TEXT ? R.id.textScroll : R.id.savedScroll;
+            slideIn(findViewById(shownId), tab > previous);
+        }
 
         paintTab(R.id.tabWorkbookLabel, R.id.tabWorkbookUnderline, tab == TAB_WORKBOOK);
         paintTab(R.id.tabTextLabel, R.id.tabTextUnderline, tab == TAB_TEXT);
@@ -294,6 +309,14 @@ public class MainActivity extends Activity implements Playback.Controller {
                     content.animate().alpha(1f).setDuration(ANIM_IN)
                             .setInterpolator(ease).start();
                 }).start();
+    }
+
+    /** Slide a pane a short way in the direction of travel as it fades in. */
+    private void slideIn(View v, boolean forward) {
+        float dx = 20 * getResources().getDisplayMetrics().density;
+        v.animate().cancel();
+        v.setTranslationX(forward ? dx : -dx);
+        v.animate().translationX(0f).setDuration(ANIM_IN).setInterpolator(ease).start();
     }
 
     /** The newly selected tab's underline grows out from its centre. */
@@ -610,6 +633,50 @@ public class MainActivity extends Activity implements Playback.Controller {
         if (box.getVisibility() != View.VISIBLE) return;
         box.animate().cancel();
         box.animate().alpha(1f).setDuration(ANIM_IN).setInterpolator(ease).start();
+        if (boxId == splashBoxId) dismissSplash();   // the launch video is ready
+    }
+
+    /** Hold the launch veil until the first video frames, then lift it. */
+    private void armSplash() {
+        View mark = findViewById(R.id.loadingMark);
+        splashPulse = ObjectAnimator.ofFloat(mark, View.ALPHA, 0.55f, 1f);
+        splashPulse.setDuration(1500);
+        splashPulse.setRepeatMode(ObjectAnimator.REVERSE);
+        splashPulse.setRepeatCount(ObjectAnimator.INFINITE);
+        splashPulse.setInterpolator(ease);
+        splashPulse.start();
+
+        // Lift when the tab we open on has its video framed (revealBox calls in).
+        splashBoxId = selectedTab == TAB_TEXT ? R.id.textVideoBox : R.id.videoBox;
+        if (boxRevealed.contains(splashBoxId)) {   // already framed this fast? lift.
+            mainHandler.post(this::dismissSplash);
+            return;
+        }
+
+        // If that tab has no video to wait for, lift after a brief, deliberate beat.
+        boolean hasVideo;
+        if (selectedTab == TAB_TEXT) {
+            TextDay d = TextDays.current(this);
+            hasVideo = d != null && !d.video.isEmpty();
+        } else if (selectedTab == TAB_WORKBOOK) {
+            hasVideo = !Lessons.today(this).video.isEmpty();
+        } else {
+            hasVideo = false;
+        }
+        if (!hasVideo) mainHandler.postDelayed(this::dismissSplash, 700);
+
+        // Never hang: lift regardless once a reasonable wait has passed.
+        mainHandler.postDelayed(this::dismissSplash, 4500);
+    }
+
+    /** Fade the launch veil away to the content, once. */
+    private void dismissSplash() {
+        if (splashDone) return;
+        splashDone = true;
+        if (splashPulse != null) { splashPulse.cancel(); splashPulse = null; }
+        View overlay = findViewById(R.id.loadingOverlay);
+        overlay.animate().alpha(0f).setDuration(ANIM_IN).setInterpolator(ease)
+                .withEndAction(() -> overlay.setVisibility(View.GONE)).start();
     }
 
     /** The &lt;video&gt; actually started — bring the media service up around it. */

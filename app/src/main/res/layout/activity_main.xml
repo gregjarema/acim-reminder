@@ -496,4 +496,33 @@
         android:background="#000000"
         android:visibility="gone" />
 
+    <!-- A quiet launch veil: the wordmark breathing on the app's own ground,
+         held until the first video has framed, then faded away to the reading.
+         Uses the theme background so it matches whatever the device shows. -->
+    <FrameLayout
+        android:id="@+id/loadingOverlay"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:background="?android:attr/colorBackground"
+        android:clickable="true"
+        android:focusable="true">
+
+        <TextView
+            android:id="@+id/loadingMark"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center"
+            android:gravity="center"
+            android:paddingLeft="40dp"
+            android:paddingRight="40dp"
+            android:text="@string/app_name"
+            android:textSize="27sp"
+            android:textColor="#7A6646"
+            android:fontFamily="serif"
+            android:letterSpacing="0.03"
+            android:lineSpacingMultiplier="1.25"
+            android:textIsSelectable="false" />
+
+    </FrameLayout>
+
 </FrameLayout>
