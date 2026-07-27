@@ -385,9 +385,19 @@ public class MainActivity extends Activity implements Playback.Controller {
         findViewById(underlineId).setBackgroundColor(selected ? SELECTED : RULE);
     }
 
-    /** Silence a hidden player without tearing down the page it has loaded. */
+    /**
+     * Quiet a hidden player without blanking it. We pause the video element
+     * itself rather than the whole WebView: WebView.onPause() suspends the page
+     * — it stops a still-loading frame from ever finishing and leaves an already
+     * -loaded one drawn white until something resumes it, which nothing here
+     * did. Pausing just the &lt;video&gt; stops the sound while the framed
+     * picture stays put and any load in flight keeps going.
+     */
     private void pausePlayer(WebView player) {
-        if (player != null) player.onPause();
+        if (player == null) return;
+        player.evaluateJavascript(
+                "(function(){try{var v=document.querySelector('video');"
+                + "if(v)v.pause();}catch(e){}})();", null);
     }
 
     // ---------------------------------------------------------- playback
