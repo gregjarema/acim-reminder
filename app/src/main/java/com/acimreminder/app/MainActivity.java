@@ -518,14 +518,17 @@ public class MainActivity extends Activity implements Playback.Controller {
             @Override
             public void onPageFinished(WebView v, String url) {
                 // The watch page arrives with Vimeo's header, sign-in bar and
-                // title around the player. Strip them so the box frames the
-                // video. Re-run a couple of times: the page finishes loading
-                // before its own scripts finish laying the player out.
+                // title around the player. frameThePlayer strips them and then
+                // keeps watching until the player stops changing, signalling
+                // back only once it has settled — that's when the frame is shown.
                 keepPlaying(v);
                 hookMediaEvents(v);
                 frameThePlayer(v);
-                mainHandler.postDelayed(() -> { hookMediaEvents(v); frameThePlayer(v); }, 900);
-                mainHandler.postDelayed(() -> { hookMediaEvents(v); frameThePlayer(v); }, 2200);
+                // The <video> can arrive a beat after the page; re-attach the
+                // media listeners a couple of times so play/pause still reaches
+                // the service even if it wasn't there on the first pass.
+                mainHandler.postDelayed(() -> hookMediaEvents(v), 900);
+                mainHandler.postDelayed(() -> hookMediaEvents(v), 2200);
             }
         });
         view.setWebChromeClient(new WebChromeClient() {
@@ -619,13 +622,14 @@ public class MainActivity extends Activity implements Playback.Controller {
             player.onResume();
             player.loadUrl(url);
 
-            // If the framing signal never lands (a slow or unusual page), reveal
-            // it anyway so the frame is never left invisible — but only if this
-            // is still the load it was armed for.
+            // Safety net: the settle-detector normally reveals the frame itself,
+            // but if its signal never lands (a slow or unusual page) reveal anyway
+            // so the frame is never left invisible — only if this is still the
+            // load it was armed for.
             mainHandler.postDelayed(() -> {
                 Integer cur = boxLoad.get(boxId);
                 if (cur != null && cur == gen) revealBox(boxId);
-            }, 3500);
+            }, 6500);
         } catch (Exception e) {
             Toast.makeText(this, "Couldn't load the video.", Toast.LENGTH_SHORT).show();
         }
@@ -675,8 +679,10 @@ public class MainActivity extends Activity implements Playback.Controller {
         }
         if (!hasVideo) mainHandler.postDelayed(this::dismissSplash, 700);
 
-        // Never hang: lift regardless once a reasonable wait has passed.
-        mainHandler.postDelayed(this::dismissSplash, 4500);
+        // The veil normally lifts the instant the opening video is framed. If
+        // that's taking unusually long, lift it anyway after a few seconds and
+        // show the reading — the frame then fades in on its own when it's ready.
+        mainHandler.postDelayed(this::dismissSplash, 4000);
     }
 
     /** Fade the launch veil away to the content, once. */
@@ -750,48 +756,59 @@ public class MainActivity extends Activity implements Playback.Controller {
     }
 
     /**
-     * Trim the watch page down to just the player.
+     * Trim the watch page down to just the player, and hold the reveal until the
+     * player has settled.
      *
      * We can't use Vimeo's embed URL — these videos are whitelisted to specific
      * domains, and the embed refuses to play anywhere else — so the plain watch
      * page it is, chrome and all. This walks up from the video and hides the
-     * siblings on the way to <body>.
+     * siblings on the way to &lt;body&gt;, hiding a sibling only if it doesn't
+     * overlap the video (Vimeo's own controls sit ON the picture, so hiding them
+     * would take the play button too). The test is geometric first, so it
+     * doesn't lean on Vimeo's class names surviving their next redesign.
      *
-     * It hides a sibling only if it doesn't overlap the video. Vimeo's own
-     * controls are a sibling that sits ON the picture, so hiding siblings
-     * outright took the play button with them — which is what left the video
-     * playable only from the phone's media controls. The header, sign-in bar
-     * and title all sit outside the picture and still go.
-     *
-     * The test is geometric first, so it doesn't depend on Vimeo's class names
-     * surviving their next redesign. If the video can't be found or hasn't been
-     * laid out yet, nothing is hidden and a later pass tries again.
+     * A single strip is too early to show: the page keeps rearranging as Vimeo's
+     * player boots — spinner, poster, controls — which is the cycling you'd
+     * otherwise watch. So this runs itself on a short timer, stripping each time,
+     * and only signals onFramed once the player's size and node count have held
+     * steady across two checks (or a few seconds pass). That's when it's shown.
      */
     private void frameThePlayer(WebView v) {
         v.evaluateJavascript(
-                "(function(){try{"
+                "(function(){"
+                + "if(window.__acimFraming)return;window.__acimFraming=true;"
+                + "var lastSig='',stable=0,seen=0,tries=0,done=false;"
+                + "function signal(){if(done)return;done=true;"
+                + "try{AndroidPlayback.onFramed();}catch(e){}}"
+                + "function strip(){try{"
                 + "var p=document.querySelector('video')"
                 + "||document.querySelector('iframe[src*=\"player.vimeo.com\"]');"
-                + "if(!p)return;"
-                + "var r=p.getBoundingClientRect();"
-                + "if(r.width<10||r.height<10)return;"
+                + "if(p){var r=p.getBoundingClientRect();"
+                + "if(r.width>=10&&r.height>=10){"
                 + "function over(el){var b=el.getBoundingClientRect();"
                 + "return b.width>0&&b.height>0&&b.left<r.right&&b.right>r.left"
                 + "&&b.top<r.bottom&&b.bottom>r.top;}"
-                // The class-name check is a second net under the geometry: a
-                // control bar faded right out could measure as nothing.
                 + "function keep(el){return over(el)"
                 + "||/control|ui|button|play|volume/i.test(String(el.className||''));}"
-                + "var n=p;"
-                + "while(n&&n!==document.body){var par=n.parentNode;if(par&&par.children){"
-                + "Array.prototype.forEach.call(par.children,function(s){"
-                + "if(s!==n&&!keep(s))s.style.display='none';});}n=par;}"
+                + "var n=p;while(n&&n!==document.body){var par=n.parentNode;"
+                + "if(par&&par.children){Array.prototype.forEach.call(par.children,"
+                + "function(s){if(s!==n&&!keep(s))s.style.display='none';});}n=par;}"
                 + "document.body.style.margin='0';"
                 + "document.documentElement.style.background='#000';"
                 + "window.scrollTo(0,0);"
-                // Framed and stripped: tell the app it's ready to be shown.
-                + "try{AndroidPlayback.onFramed();}catch(e){}"
-                + "}catch(e){}})();", null);
+                + "seen++;"
+                + "var sig=Math.round(r.width)+'x'+Math.round(r.height)+':'"
+                + "+document.getElementsByTagName('*').length;"
+                + "if(sig===lastSig)stable++;else{stable=0;lastSig=sig;}"
+                // Settled (size + node count steady), or the player has been up
+                // long enough that we stop waiting on a page that keeps fidgeting.
+                + "if(stable>=2||seen>=12){signal();return;}"
+                + "}}"
+                + "}catch(e){}"
+                // Keep polling until the player shows and settles; give up after
+                // ~6s if it never does, so the frame still appears.
+                + "if(tries++<30)setTimeout(strip,200);else signal();"
+                + "}strip();})();", null);
     }
 
     /** Hide a player and stop it loading. */
