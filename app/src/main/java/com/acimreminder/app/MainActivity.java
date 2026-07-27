@@ -46,7 +46,11 @@ import androidx.core.graphics.Insets;
 import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowInsetsCompat;
 
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
 /**
  * The app's one screen, in two tabs.
@@ -91,6 +95,13 @@ public class MainActivity extends Activity implements Playback.Controller {
     private int boundLessonNumber = -1;
     private int boundTextDay = -1;
     private int selectedTab = TAB_WORKBOOK;
+
+    // A video frame loads invisibly and is only faded in once it's framed, so
+    // the appearance is the finished player, not the states it loads through.
+    // boxLoad tags each load so a stale fallback can't reveal a newer one;
+    // boxRevealed keeps the reveal to once per load.
+    private final Map<Integer, Integer> boxLoad = new HashMap<>();
+    private final Set<Integer> boxRevealed = new HashSet<>();
 
     private Chronometer chronoMeditation;
     private final Handler mainHandler = new Handler(Looper.getMainLooper());
@@ -459,6 +470,8 @@ public class MainActivity extends Activity implements Playback.Controller {
             public void onPause() { mainHandler.post(() -> onVideoPaused()); }
             @android.webkit.JavascriptInterface
             public void onEnded() { mainHandler.post(() -> onVideoEnded()); }
+            @android.webkit.JavascriptInterface
+            public void onFramed() { mainHandler.post(() -> onVideoFramed(self)); }
         }, "AndroidPlayback");
 
         view.setWebViewClient(new WebViewClient() {
@@ -545,7 +558,16 @@ public class MainActivity extends Activity implements Playback.Controller {
         try {
             if (linkId != 0) findViewById(linkId).setVisibility(View.GONE);
             View box = findViewById(boxId);
-            fadeIn(box);
+
+            // Lay the frame out but keep it invisible while it loads. The page
+            // passes through a black box, a spinner and Vimeo's raw chrome
+            // before it's stripped to just the player; hidden, none of that
+            // shows. onVideoFramed fades it in once the player is framed.
+            final int gen = boxLoad.merge(boxId, 1, Integer::sum);
+            boxRevealed.remove(boxId);
+            box.animate().cancel();
+            box.setAlpha(0f);
+            box.setVisibility(View.VISIBLE);
             // Frame the box to the video's 16:9 shape instead of a fixed
             // height, so there's no black band left under the picture. The
             // width isn't known until the box is laid out, so wait for that.
@@ -557,14 +579,37 @@ public class MainActivity extends Activity implements Playback.Controller {
                     box.setLayoutParams(lp);
                 }
             });
-            // Just load the frame — don't start the media service here. It comes
-            // up in onVideoPlay when the video actually plays, so a preloaded
-            // frame you never watch doesn't post a media notification.
+
+            // Don't start the media service here — it comes up in onVideoPlay
+            // when the video actually plays, so a preloaded frame you never
+            // watch doesn't post a media notification.
             player.onResume();
             player.loadUrl(url);
+
+            // If the framing signal never lands (a slow or unusual page), reveal
+            // it anyway so the frame is never left invisible — but only if this
+            // is still the load it was armed for.
+            mainHandler.postDelayed(() -> {
+                Integer cur = boxLoad.get(boxId);
+                if (cur != null && cur == gen) revealBox(boxId);
+            }, 3500);
         } catch (Exception e) {
             Toast.makeText(this, "Couldn't load the video.", Toast.LENGTH_SHORT).show();
         }
+    }
+
+    /** The page finished framing its player — fade the ready frame in. */
+    private void onVideoFramed(WebView player) {
+        revealBox(player == textWebView ? R.id.textVideoBox : R.id.videoBox);
+    }
+
+    /** Fade a loaded, framed video box into view, once per load. */
+    private void revealBox(int boxId) {
+        if (!boxRevealed.add(boxId)) return;   // already revealed this load
+        View box = findViewById(boxId);
+        if (box.getVisibility() != View.VISIBLE) return;
+        box.animate().cancel();
+        box.animate().alpha(1f).setDuration(ANIM_IN).setInterpolator(ease).start();
     }
 
     /** The &lt;video&gt; actually started — bring the media service up around it. */
@@ -667,6 +712,8 @@ public class MainActivity extends Activity implements Playback.Controller {
                 + "document.body.style.margin='0';"
                 + "document.documentElement.style.background='#000';"
                 + "window.scrollTo(0,0);"
+                // Framed and stripped: tell the app it's ready to be shown.
+                + "try{AndroidPlayback.onFramed();}catch(e){}"
                 + "}catch(e){}})();", null);
     }
 
