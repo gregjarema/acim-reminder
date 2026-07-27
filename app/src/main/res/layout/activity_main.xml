@@ -238,7 +238,7 @@
                         android:background="#000000"
                         android:visibility="gone">
 
-                        <WebView
+                        <com.acimreminder.app.BackgroundWebView
                             android:id="@+id/webView"
                             android:layout_width="match_parent"
                             android:layout_height="match_parent" />
@@ -378,7 +378,7 @@
                         android:background="#000000"
                         android:visibility="gone">
 
-                        <WebView
+                        <com.acimreminder.app.BackgroundWebView
                             android:id="@+id/textWebView"
                             android:layout_width="match_parent"
                             android:layout_height="match_parent" />
