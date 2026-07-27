@@ -144,7 +144,61 @@ public class MainActivity extends Activity implements Playback.Controller {
         if (OnboardingActivity.hasOnboarded(this)) {
             bindToday();      // keep the lesson current across a midnight rollover
             refreshMeditationState();
+            offerUpdate();
         }
+    }
+
+    // -------------------------------------------------------------- updates
+
+    /** The last time we asked GitHub, so opening the app repeatedly doesn't. */
+    private static final String KEY_UPDATE_CHECKED_AT = "update_checked_at";
+    private static final long CHECK_EVERY_MS = 15 * 60 * 1000L;
+
+    /**
+     * Offer a waiting build in a strip under the tabs, each time you open the app.
+     *
+     * The daily notification still runs — it's what does the downloading while
+     * you're not here — but a notification only appears once, and it's easy to
+     * swipe away and forget. This asks while you're already looking at the app,
+     * and keeps asking until you install it or dismiss it.
+     */
+    private void offerUpdate() {
+        // Anything already downloaded can be offered straight away, with no
+        // network call at all.
+        showUpdateBanner(Updater.readyBuild(this));
+
+        long last = prefs().getLong(KEY_UPDATE_CHECKED_AT, 0L);
+        if (System.currentTimeMillis() - last < CHECK_EVERY_MS) return;
+        prefs().edit().putLong(KEY_UPDATE_CHECKED_AT, System.currentTimeMillis()).apply();
+
+        new Thread(() -> {
+            final int ready = Updater.checkAndFetch(getApplicationContext(), false);
+            mainHandler.post(() -> {
+                if (!isFinishing() && !isDestroyed()) showUpdateBanner(ready);
+            });
+        }).start();
+    }
+
+    private void showUpdateBanner(int build) {
+        View banner = findViewById(R.id.updateBanner);
+        if (build <= 0 || Updater.dismissed(this, build)) {
+            banner.setVisibility(View.GONE);
+            return;
+        }
+        ((TextView) findViewById(R.id.updateBannerText))
+                .setText("Build " + build + " is ready to install");
+        findViewById(R.id.updateBannerInstall).setOnClickListener(v -> {
+            try {
+                startActivity(Updater.installIntent(this, Updater.apkFile(this)));
+            } catch (Exception e) {
+                Toast.makeText(this, "Couldn't open the installer.", Toast.LENGTH_SHORT).show();
+            }
+        });
+        findViewById(R.id.updateBannerDismiss).setOnClickListener(v -> {
+            Updater.dismiss(this, build);
+            banner.setVisibility(View.GONE);
+        });
+        banner.setVisibility(View.VISIBLE);
     }
 
     // ---------------------------------------------------------------- tabs

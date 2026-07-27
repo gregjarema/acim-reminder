@@ -28,7 +28,7 @@ public class UpdateReceiver extends BroadcastReceiver {
         final Context app = ctx.getApplicationContext();
         new Thread(() -> {
             try {
-                Updater.checkAndFetch(app);
+                Updater.checkAndFetch(app, true);
             } finally {
                 schedule(app);      // re-arm regardless of the outcome
                 pending.finish();

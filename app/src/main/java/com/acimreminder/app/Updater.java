@@ -40,6 +40,19 @@ public final class Updater {
     private static final int NOTIF_ID = 5001;
     /** Remembers the build we've already downloaded, so we fetch it once. */
     private static final String KEY_FETCHED = "update_fetched_build";
+    /** A build waved away in the app's banner. */
+    private static final String KEY_DISMISSED = "update_dismissed_build";
+
+    /** Stop offering this build — in the banner and in the notification both. */
+    public static void dismiss(Context ctx, int build) {
+        ctx.getSharedPreferences(OnboardingActivity.PREFS, Context.MODE_PRIVATE)
+                .edit().putInt(KEY_DISMISSED, build).apply();
+    }
+
+    public static boolean dismissed(Context ctx, int build) {
+        return build == ctx.getSharedPreferences(OnboardingActivity.PREFS, Context.MODE_PRIVATE)
+                .getInt(KEY_DISMISSED, -1);
+    }
 
     /** What the newest release is, or null if we couldn't tell. */
     public static final class Release {
@@ -119,28 +132,55 @@ public final class Updater {
         return -1;
     }
 
+    /** Where a downloaded build waits until it's installed. */
+    public static File apkFile(Context ctx) {
+        return new File(ctx.getCacheDir(), "update.apk");
+    }
+
     /**
-     * Check, download if newer, and post the notification that installs it.
-     * Blocking; call from a background thread.
+     * The build number sitting downloaded and ready to install, or -1.
+     *
+     * Cheap and offline — it only reads what a past check left behind — so the
+     * app can offer an update the instant it opens, without waiting on GitHub.
      */
-    public static void checkAndFetch(Context ctx) {
+    public static int readyBuild(Context ctx) {
+        int fetched = ctx.getSharedPreferences(OnboardingActivity.PREFS, Context.MODE_PRIVATE)
+                .getInt(KEY_FETCHED, -1);
+        int installed = installedBuild(ctx);
+        if (fetched <= installed || installed < 0) return -1;
+        return apkFile(ctx).exists() ? fetched : -1;
+    }
+
+    /**
+     * Check, download if newer, and say which build is now ready (-1 for none).
+     * Blocking; call from a background thread.
+     *
+     * @param notify post the "update ready" notification. The daily check does;
+     *               the app doesn't, because it shows a banner instead — being
+     *               told twice about the same build, once in a place you're
+     *               already looking, is the kind of pile-up worth avoiding.
+     */
+    public static int checkAndFetch(Context ctx, boolean notify) {
         Release r = latest();
-        if (r == null) return;
+        if (r == null) return readyBuild(ctx);
 
         int installed = installedBuild(ctx);
         // If we can't tell what we're running, do nothing rather than nag on
         // every check.
-        if (installed < 0 || r.buildNumber <= installed) return;
+        if (installed < 0 || r.buildNumber <= installed) return -1;
 
-        File apk = new File(ctx.getCacheDir(), "update.apk");
+        File apk = apkFile(ctx);
         int fetched = ctx.getSharedPreferences(OnboardingActivity.PREFS, Context.MODE_PRIVATE)
                 .getInt(KEY_FETCHED, -1);
         if (fetched != r.buildNumber || !apk.exists()) {
-            if (!download(r.apkUrl, apk)) return;
+            if (!download(r.apkUrl, apk)) return -1;
             ctx.getSharedPreferences(OnboardingActivity.PREFS, Context.MODE_PRIVATE)
                     .edit().putInt(KEY_FETCHED, r.buildNumber).apply();
         }
-        notifyReady(ctx, r, apk);
+        // A build waved away in the app shouldn't come back as a notification
+        // in the small hours.
+        if (notify && !dismissed(ctx, r.buildNumber)) notifyReady(ctx, r, apk);
+        return r.buildNumber;
     }
 
     private static boolean download(String url, File dest) {

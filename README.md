@@ -92,11 +92,20 @@ becomes reachable once it lands.
 ## Updates
 
 New builds install **over** the old one — no uninstall, no losing your place or
-your saved passages. The app checks GitHub once a day, downloads a newer build
-if there is one, and posts a notification; tapping it opens Android's installer.
+your saved passages.
 
-Android never lets a sideloaded app install silently, so that final tap is
-required no matter what. Everything before it is automatic.
+The app offers an update in two places. A **strip under the tabs** whenever you
+open the app, and a **notification** from the daily background check. The strip
+is the one that matters: a notification appears once and is easy to swipe away
+and forget, while the strip asks while you're already looking, and keeps asking
+until you install it or tap ✕. Dismissing it silences that build in both places.
+
+Anything already downloaded is offered the instant the app opens, with no
+network call. The check itself runs at most every 15 minutes, so opening the app
+repeatedly doesn't hammer GitHub.
+
+Android never lets a sideloaded app install silently, so that final tap on the
+installer is required no matter what. Everything before it is automatic.
 
 This depends on the APK being signed with a **stable key**. Gradle otherwise
 falls back to `~/.android/debug.keystore`, which the CI runner generates fresh

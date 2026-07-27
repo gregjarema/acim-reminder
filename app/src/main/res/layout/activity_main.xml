@@ -121,6 +121,60 @@
                 android:contentDescription="More" />
         </LinearLayout>
 
+        <!-- A new build is waiting. Sits under the tab bar rather than arriving
+             as a notification, so it's offered when you're already here and
+             ignorable the rest of the time. Gone until there's something to say. -->
+        <LinearLayout
+            android:id="@+id/updateBanner"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:background="#EFE9DB"
+            android:paddingStart="20dp"
+            android:paddingEnd="8dp"
+            android:paddingTop="8dp"
+            android:paddingBottom="8dp"
+            android:visibility="gone">
+
+            <TextView
+                android:id="@+id/updateBannerText"
+                android:layout_width="0dp"
+                android:layout_weight="1"
+                android:layout_height="wrap_content"
+                android:textSize="13sp"
+                android:textColor="#7A6646"
+                android:textIsSelectable="false" />
+
+            <TextView
+                android:id="@+id/updateBannerInstall"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:padding="10dp"
+                android:text="Install"
+                android:textSize="13sp"
+                android:textStyle="bold"
+                android:textColor="#7A6646"
+                android:background="?android:attr/selectableItemBackground"
+                android:clickable="true"
+                android:focusable="true"
+                android:textIsSelectable="false" />
+
+            <TextView
+                android:id="@+id/updateBannerDismiss"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:padding="10dp"
+                android:text="✕"
+                android:textSize="13sp"
+                android:textColor="#A08A63"
+                android:background="?android:attr/selectableItemBackground"
+                android:clickable="true"
+                android:focusable="true"
+                android:textIsSelectable="false"
+                android:contentDescription="Dismiss" />
+        </LinearLayout>
+
         <FrameLayout
             android:layout_width="match_parent"
             android:layout_height="0dp"
