@@ -13,6 +13,12 @@ import android.os.Handler;
 import android.os.Looper;
 import android.os.SystemClock;
 import android.text.Html;
+import android.text.SpannableStringBuilder;
+import android.text.Spanned;
+import android.text.TextPaint;
+import android.text.style.MetricAffectingSpan;
+import android.text.style.RelativeSizeSpan;
+import android.text.style.SuperscriptSpan;
 import android.view.ActionMode;
 import android.view.Menu;
 import android.view.MenuItem;
@@ -1091,7 +1097,45 @@ public class MainActivity extends Activity implements Playback.Controller {
     private CharSequence asHtml(String body) {
         if (body == null) return "";
         String html = body.replace("\n\n", "<br><br>").replace("\n", "<br>");
-        return Html.fromHtml(html, Html.FROM_HTML_MODE_COMPACT);
+        Spanned spanned = Html.fromHtml(html, Html.FROM_HTML_MODE_COMPACT);
+
+        // The sentence-number superscripts otherwise sit so high they stretch
+        // the lines that carry one, leaving the body unevenly spaced. Swap the
+        // stock SuperscriptSpan — which raises the digit half a full-size
+        // ascent — for a gentler one that shrinks it and lifts it only a
+        // little, so it stays within the line's own height and nothing spreads.
+        SpannableStringBuilder out = new SpannableStringBuilder(spanned);
+        for (SuperscriptSpan sup : out.getSpans(0, out.length(), SuperscriptSpan.class)) {
+            int start = out.getSpanStart(sup);
+            int end = out.getSpanEnd(sup);
+            int flags = out.getSpanFlags(sup);
+            out.removeSpan(sup);
+            // Drop any size span the parser paired with it, so our own shrink is
+            // the only one that applies rather than compounding to a speck.
+            for (RelativeSizeSpan sz : out.getSpans(start, end, RelativeSizeSpan.class)) {
+                out.removeSpan(sz);
+            }
+            out.setSpan(new GentleSuperscript(), start, end, flags);
+        }
+        return out;
+    }
+
+    /**
+     * A superscript that doesn't stretch its line: it shrinks the digit and
+     * lifts it a little, keeping its top within the surrounding text's ascent,
+     * so every line stays the same height whether or not it carries a number.
+     */
+    private static class GentleSuperscript extends MetricAffectingSpan {
+        @Override public void updateDrawState(TextPaint p) { apply(p); }
+        @Override public void updateMeasureState(TextPaint p) { apply(p); }
+
+        private void apply(TextPaint p) {
+            // Lift by less than a third of the full-size ascent (ascent is
+            // negative, so this shifts up), then shrink — small enough that the
+            // raised digit still fits under the line's normal top.
+            p.baselineShift += (int) (p.ascent() * 0.30f);
+            p.setTextSize(p.getTextSize() * 0.6f);
+        }
     }
 
     private SharedPreferences prefs() {
