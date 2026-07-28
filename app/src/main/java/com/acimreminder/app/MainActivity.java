@@ -143,6 +143,8 @@ public class MainActivity extends Activity implements Playback.Controller {
 
         webView = setUpVideoPlayer(R.id.webView, R.id.videoProgress);
         textWebView = setUpVideoPlayer(R.id.textWebView, R.id.textVideoProgress);
+        keepAspect(R.id.videoBox);
+        keepAspect(R.id.textVideoBox);
         fullscreenContainer = findViewById(R.id.fullscreenContainer);
 
         findViewById(R.id.tabWorkbook).setOnClickListener(v -> selectTab(TAB_WORKBOOK));
@@ -581,6 +583,28 @@ public class MainActivity extends Activity implements Playback.Controller {
     }
 
     /**
+     * Hold a video box at 16:9 of its own width, re-applied every time it's laid
+     * out. A one-shot resize at preload time isn't enough: a box preloaded while
+     * its tab is hidden has zero width then, so the resize is skipped and it
+     * shows at its default height — a tall frame with a black band under the
+     * picture — the first time you open that tab. This catches that layout.
+     */
+    private void keepAspect(int boxId) {
+        final View box = findViewById(boxId);
+        box.addOnLayoutChangeListener((v, l, t, r, b, ol, ot, or, ob) -> {
+            int w = r - l;
+            if (w <= 0) return;
+            int target = Math.round(w * 9f / 16f);
+            ViewGroup.LayoutParams lp = box.getLayoutParams();
+            if (lp.height != target) {
+                lp.height = target;
+                // Re-layout after this pass, not during it.
+                box.post(() -> box.setLayoutParams(lp));
+            }
+        });
+    }
+
+    /**
      * Load a video right above the reading so you can watch and read together.
      * This loads the plain vimeo.com watch page as-is rather than rewriting it
      * to the player.vimeo.com iframe-embed URL: these videos are locked to
@@ -604,17 +628,8 @@ public class MainActivity extends Activity implements Playback.Controller {
             box.animate().cancel();
             box.setAlpha(0f);
             box.setVisibility(View.VISIBLE);
-            // Frame the box to the video's 16:9 shape instead of a fixed
-            // height, so there's no black band left under the picture. The
-            // width isn't known until the box is laid out, so wait for that.
-            box.post(() -> {
-                int w = box.getWidth();
-                if (w > 0) {
-                    ViewGroup.LayoutParams lp = box.getLayoutParams();
-                    lp.height = Math.round(w * 9f / 16f);
-                    box.setLayoutParams(lp);
-                }
-            });
+            // (keepAspect holds the box at 16:9 whenever it's laid out, including
+            // the first time its tab is shown after a hidden-tab preload.)
 
             // Don't start the media service here — it comes up in onVideoPlay
             // when the video actually plays, so a preloaded frame you never
