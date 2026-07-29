@@ -652,6 +652,11 @@ public class MainActivity extends Activity implements Playback.Controller {
 
     /** The page finished framing its player — fade the ready frame in. */
     private void onVideoFramed(WebView player) {
+        // The <video> is definitely present now, so make sure its play/pause
+        // listeners are attached — that's what starts the foreground media
+        // service when you press play, and the service is what keeps the audio
+        // alive once the screen is off.
+        hookMediaEvents(player);
         revealBox(player == textWebView ? R.id.textVideoBox : R.id.videoBox);
     }
 

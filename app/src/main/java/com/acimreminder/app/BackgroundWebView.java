@@ -42,4 +42,18 @@ public class BackgroundWebView extends WebView {
             super.onWindowVisibilityChanged(View.VISIBLE);
         }
     }
+
+    /**
+     * The one that actually mattered. Modern WebView decides whether to keep the
+     * page — and its audio — running from the view's <em>aggregated</em>
+     * visibility, which the framework flips to false the instant the screen locks
+     * or the app goes to the background, pausing the video no matter what
+     * onWindowVisibilityChanged reported. Report the page as visible regardless;
+     * we stop playback deliberately elsewhere (pausing the &lt;video&gt; on a tab
+     * change), so nothing here needs the framework to pause it for us.
+     */
+    @Override
+    public void onVisibilityAggregated(boolean isVisible) {
+        super.onVisibilityAggregated(true);
+    }
 }
