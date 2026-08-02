@@ -211,6 +211,42 @@ def strip_tags(html: str) -> str:
     return re.sub(r"<[^>]+>", "", html or "")
 
 
+# --- Review days (Review III, Lessons 111-120) ----------------------------
+#
+# A review day is unlike any single lesson. It carries TWO one-line thoughts,
+# and the workbook's Review III introduction prescribes a format all its own:
+#
+#   "Devote five minutes twice a day... to considering the thoughts that are
+#    assigned... Use one on the hour, and the other one a half an hour later."
+#
+# So the practice is: a five-minute sitting morning and evening (count, 2),
+# with a brief remembrance in between that alternates the two thoughts — one on
+# the hour, the other on the half hour. The generic duration/frequency
+# heuristics can't express two-thoughts-alternating, so review days are handled
+# here in full and skip the inheritance machinery below entirely.
+#
+# Detected by the two labels the assignment ends with; only Review III uses
+# them, so this targets exactly Lessons 111-120.
+REVIEW_RE = re.compile(
+    r"On the hour:\s*(.+?)\s*On the half hour:\s*(.+?)\s*$",
+    re.S | re.I)
+
+
+def extract_review(body: str) -> tuple[str, str] | None:
+    """The (on-the-hour, on-the-half-hour) thoughts of a review day, or None."""
+    plain = strip_tags(body or "")
+    if "on the half hour" not in plain.lower():
+        return None
+    m = REVIEW_RE.search(plain)
+    if not m:
+        return None
+    hour = re.sub(r"\s+", " ", m.group(1)).strip()
+    half = re.sub(r"\s+", " ", m.group(2)).strip()
+    if not hour or not half:
+        return None
+    return hour, half
+
+
 def meditation_lines(lesson: dict) -> str:
     """
     The lines to hold during practice — the notification's subtext.
@@ -245,8 +281,32 @@ def main() -> int:
     cur_min, cur_kind, cur_val, cur_remember = 1, "count", 4, False
     stated_dur = stated_freq = stated_rem = 0
 
+    review_days = 0
     for l in lessons:
         text = strip_tags(l.get("body") or "")
+
+        # Review days set their own regime in full and don't take part in the
+        # duration/frequency inheritance — deliberately leaving cur_* untouched
+        # so the lesson after the review inherits from before it, as it always
+        # did.
+        review = extract_review(l.get("body") or "")
+        l["hourIdea"] = review[0] if review else ""
+        l["halfIdea"] = review[1] if review else ""
+        if review:
+            review_days += 1
+            l["practiceMinutes"] = 5
+            l["practiceKind"] = "count"          # a sitting morning and evening
+            l["practiceValue"] = 2
+            l["hourlyRemembrance"] = True         # plus the hour/half-hour thoughts
+            l["durationStated"] = True
+            l["frequencyStated"] = True
+            l["practiceStated"] = True
+            l["practiceSource"] = ("Review III: five minutes twice a day; one idea "
+                                   "on the hour, the other on the half hour.")
+            # Both thoughts, so the sitting and the meditation notification hold
+            # the pair the day is reviewing.
+            l["meditationText"] = l["hourIdea"] + "\n" + l["halfIdea"]
+            continue
 
         d = find_duration(text)
         if d:
@@ -302,6 +362,7 @@ def main() -> int:
           dict(Counter(f'{l["practiceKind"]}:{l["practiceValue"]}' for l in lessons).most_common(8)))
     print(f"  also nudged hourly:        {sum(1 for l in lessons if l['hourlyRemembrance'])}")
     print(f"  with meditation text:      {sum(1 for l in lessons if l['meditationText'])}")
+    print(f"  review days (hour/half):   {review_days}")
 
     if args.report:
         for l in lessons:

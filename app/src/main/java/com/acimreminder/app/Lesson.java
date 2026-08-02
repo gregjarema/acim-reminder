@@ -38,10 +38,22 @@ public final class Lesson {
     /** The lines to hold during practice — the reminder's subtext. */
     public final String meditationText;
 
+    /**
+     * A review day (Review III, Lessons 111-120) reviews two lessons at once and
+     * carries <b>two</b> one-line thoughts: one to use on the hour, the other on
+     * the half hour. Empty on every ordinary lesson. When set, this lesson is a
+     * review day — see {@link #isReview()} — and its practice regime differs:
+     * a five-minute sitting morning and evening, with these two thoughts
+     * alternating in the hourly and half-hourly remembrances between.
+     */
+    public final String hourIdea;
+    public final String halfIdea;
+
     public Lesson(int number, String title, String phrase, String meditation,
                   String video, String body,
                   int practiceMinutes, String practiceKind, int practiceValue,
-                  boolean hourlyRemembrance, String meditationText) {
+                  boolean hourlyRemembrance, String meditationText,
+                  String hourIdea, String halfIdea) {
         this.number = number;
         this.title = title;
         this.phrase = phrase;
@@ -53,6 +65,13 @@ public final class Lesson {
         this.practiceValue = practiceValue;
         this.hourlyRemembrance = hourlyRemembrance;
         this.meditationText = meditationText;
+        this.hourIdea = hourIdea == null ? "" : hourIdea;
+        this.halfIdea = halfIdea == null ? "" : halfIdea;
+    }
+
+    /** True on a Review III day, which carries two alternating thoughts. */
+    public boolean isReview() {
+        return !hourIdea.isEmpty() && !halfIdea.isEmpty();
     }
 
     /** True when today asks you to sit for a while, rather than just remember. */
@@ -81,7 +100,20 @@ public final class Lesson {
      * own title.
      */
     public String idea() {
-        return tidy(phrase);
+        // A review day has no single idea of its own — its "phrase" is only the
+        // instruction "For morning and evening review:". The thought to hold, and
+        // the natural heading, is the one used on the hour.
+        return tidy(isReview() ? hourIdea : phrase);
+    }
+
+    /** The thought to use on the hour — the on-the-hour half of a review day. */
+    public String hourThought() {
+        return tidy(hourIdea);
+    }
+
+    /** The thought to use on the half hour — a review day's second thought. */
+    public String halfThought() {
+        return tidy(halfIdea);
     }
 
     /**
