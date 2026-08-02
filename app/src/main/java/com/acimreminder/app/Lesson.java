@@ -1,5 +1,8 @@
 package com.acimreminder.app;
 
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+
 /**
  * One workbook lesson. Loaded from assets/lessons.json by {@link Lessons}.
  *
@@ -100,15 +103,48 @@ public final class Lesson {
      * own title.
      */
     public String idea() {
-        // A review day has no single idea of its own — its "phrase" is only the
-        // instruction "For morning and evening review:". It reviews two lessons,
-        // so BOTH thoughts are its heading: the one used on the hour and the one
-        // used on the half hour, a line each. (Callers that need a single line —
-        // the jump-to-lesson list — flatten the newline themselves.)
+        // A Review III day has no single idea of its own — its "phrase" is only
+        // the instruction "For morning and evening review:". It reviews two
+        // lessons, so BOTH thoughts are its heading: the one used on the hour and
+        // the one used on the half hour, a line each.
         if (isReview()) {
             return tidy(hourIdea) + "\n" + tidy(halfIdea);
         }
+        // Review I and II days head the day the same way — a bare instruction
+        // ("Our ideas for review today are:") with the ideas themselves listed
+        // below. Show those ideas as the heading, a line each, rather than the
+        // instruction, so the day's actual content isn't hidden in the body.
+        // (Callers that need a single line — the jump-to-lesson list — flatten
+        // the newlines themselves.)
+        if (phrase != null && phrase.trim().endsWith(":")) {
+            String ideas = reviewedIdeas();
+            if (!ideas.isEmpty()) return ideas;
+        }
         return tidy(phrase);
+    }
+
+    /** "(1) <i>...</i>" numbered idea lines on a Review I/II day, one per line. */
+    private static final Pattern REVIEWED_IDEA =
+            Pattern.compile("\\(\\d+\\)\\s*<i>(.*?)</i>", Pattern.DOTALL);
+
+    private String reviewedIdeas() {
+        if (body == null || body.isEmpty()) return "";
+        StringBuilder sb = new StringBuilder();
+        Matcher m = REVIEWED_IDEA.matcher(body);
+        while (m.find()) {
+            String s = tidy(unescape(m.group(1).replaceAll("<[^>]+>", "")));
+            if (!s.isEmpty()) {
+                if (sb.length() > 0) sb.append('\n');
+                sb.append(s);
+            }
+        }
+        return sb.toString();
+    }
+
+    /** The few HTML entities the stored body uses, back to plain text. */
+    private static String unescape(String s) {
+        return s.replace("&#39;", "'").replace("&quot;", "\"")
+                .replace("&lt;", "<").replace("&gt;", ">").replace("&amp;", "&");
     }
 
     /** The thought to use on the hour — the on-the-hour half of a review day. */
