@@ -898,6 +898,12 @@ public class MainActivity extends Activity implements Playback.Controller {
 
     /** A plain-English line describing what today actually asks of you. */
     private String practiceSummary(Lesson l) {
+        // A review day has its own rhythm: a sitting morning and evening, with
+        // its two thoughts alternating on the hour and the half hour between.
+        if (l.isReview()) {
+            return l.practiceMinutes + " minutes, morning and evening · "
+                    + "a thought on the hour and the half hour";
+        }
         String when;
         if (Lesson.KIND_INTERVAL.equals(l.practiceKind)) {
             when = l.practiceValue == 30 ? "every half hour"

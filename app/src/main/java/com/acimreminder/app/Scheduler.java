@@ -90,6 +90,15 @@ public final class Scheduler {
                 if (seen.add(slotId(hour, 0))) out.add(new int[]{hour, 0, 0});
             }
         }
+        // A review day (Review III) carries two thoughts and asks for one on the
+        // hour and the other on the half hour. The :00 remembrances are added
+        // above; here are the :30 ones in between. ReminderReceiver reads the
+        // minute to decide which of the two thoughts to show.
+        if (lesson.isReview()) {
+            for (int hour = START_HOUR; hour < END_HOUR; hour++) {
+                if (seen.add(slotId(hour, 30))) out.add(new int[]{hour, 30, 0});
+            }
+        }
         return out;
     }
 
