@@ -129,8 +129,16 @@ public class ReminderReceiver extends BroadcastReceiver {
         if (!rest.isEmpty()) {
             b.setContentText(rest);
             b.setStyle(new NotificationCompat.BigTextStyle().bigText(rest));
-        } else {
+        } else if (headline.contains("\n")) {
+            // A multi-line idea: collapsed shows the first line, expanding reveals
+            // the rest — so the body adds something the title doesn't already show.
             b.setStyle(new NotificationCompat.BigTextStyle().bigText(headline));
+        } else {
+            // A single-line idea with no separate verse (a review day's one
+            // thought). Show it once — as the title, wrapping to its full length
+            // via the big-text template — with no body echoing the same sentence
+            // beneath it, which is what printed it twice before.
+            b.setStyle(new NotificationCompat.BigTextStyle().setBigContentTitle(headline));
         }
 
         try {
