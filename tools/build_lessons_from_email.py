@@ -166,7 +166,18 @@ def extract(path):
             break
 
     if start is not None and start + 1 < len(paras):
-        return result(paras[start + 1], rich[start + 2:])
+        # Anything printed BETWEEN the masthead and the "Lesson N" header is a
+        # section preamble — a Review or Part II introduction, or a "What Is...?"
+        # essay — carried once at the head of the period's first day. The header
+        # anchors the body, so the old `rich[start + 2:]` silently dropped that
+        # preamble: the text was lost, and for the reviews so was the practice
+        # schedule stated only there (Lesson 81 lost its timer entirely). Strip
+        # the leading masthead boilerplate, then keep the rest and prepend it to
+        # the body so both the text and the schedule survive.
+        pre = 0
+        while pre < start and BOILER.search(paras[pre]):
+            pre += 1
+        return result(paras[start + 1], rich[pre:start] + rich[start + 2:])
 
     # No "Lesson N" header. Two known header-less shapes:
     #   (a) a mis-numbered "Lesson X" line still heads the email — use it.
