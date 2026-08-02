@@ -101,9 +101,14 @@ public final class Lesson {
      */
     public String idea() {
         // A review day has no single idea of its own — its "phrase" is only the
-        // instruction "For morning and evening review:". The thought to hold, and
-        // the natural heading, is the one used on the hour.
-        return tidy(isReview() ? hourIdea : phrase);
+        // instruction "For morning and evening review:". It reviews two lessons,
+        // so BOTH thoughts are its heading: the one used on the hour and the one
+        // used on the half hour, a line each. (Callers that need a single line —
+        // the jump-to-lesson list — flatten the newline themselves.)
+        if (isReview()) {
+            return tidy(hourIdea) + "\n" + tidy(halfIdea);
+        }
+        return tidy(phrase);
     }
 
     /** The thought to use on the hour — the on-the-hour half of a review day. */

@@ -938,7 +938,7 @@ public class MainActivity extends Activity implements Playback.Controller {
         int current = Lessons.today(this).number;
         for (int i = 0; i < all.size(); i++) {
             Lesson l = all.get(i);
-            labels[i] = l.title + " — " + l.idea();
+            labels[i] = l.title + " — " + l.idea().replace("\n", " · ");
             if (l.number == current) checked = i;
         }
 
