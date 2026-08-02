@@ -17,6 +17,16 @@ public class ReminderReceiver extends BroadcastReceiver {
     /** Base notification id; each slot gets its own so they don't collide. */
     static final int NOTIF_BASE = 2000;
 
+    /**
+     * The single id every reminder on a review day posts under. A review day
+     * nudges you often — Review III fires every half hour — and stacking a
+     * fresh notification each time buries the phone in stale ones. Posting them
+     * all under one id means each simply replaces the last, so only the most
+     * recent is ever on screen. Kept below {@link #NOTIF_BASE} so it can never
+     * collide with a per-slot id.
+     */
+    static final int NOTIF_REVIEW = 1999;
+
     /** Carries the posted notification's id to "Begin", so it can clear it. */
     static final String EXTRA_NOTIF_ID = "notif_id";
 
@@ -46,8 +56,12 @@ public class ReminderReceiver extends BroadcastReceiver {
     }
 
     private void postReminder(Context ctx, int hour, int minute, boolean sitting) {
-        int notifId = notifId(hour, minute);
         Lesson lesson = Lessons.today(ctx);
+        // On a review day every reminder shares one id, so each replaces the last
+        // and only the most recent stays on screen. Ordinary days keep a per-slot
+        // id so two tracks at once (a sitting and a remembrance) don't clobber
+        // each other.
+        int notifId = lesson.isReviewDay() ? NOTIF_REVIEW : notifId(hour, minute);
         String headline;
         String rest;
         if (lesson.isReview()) {

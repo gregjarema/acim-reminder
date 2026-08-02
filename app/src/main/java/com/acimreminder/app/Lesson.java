@@ -77,6 +77,26 @@ public final class Lesson {
         return !hourIdea.isEmpty() && !halfIdea.isEmpty();
     }
 
+    /** "(121)" style references to the lessons a review day revisits. */
+    private static final Pattern NUMBERED_IDEA = Pattern.compile("\\(\\d+\\)");
+
+    /**
+     * A review day proper — one that revisits a set of already-given lessons,
+     * listed as numbered ideas in its body. True for Reviews I–V (Lessons
+     * 51–60, 81–90, 111–120, 141–150, 171–180); false for the single-idea days
+     * of Review VI and for ordinary lessons. These days remind often, so their
+     * reminders post under one id and replace each other rather than stack.
+     */
+    public boolean isReviewDay() {
+        if (body == null || body.isEmpty()) return false;
+        Matcher m = NUMBERED_IDEA.matcher(body);
+        int n = 0;
+        while (m.find()) {
+            if (++n >= 2) return true;
+        }
+        return false;
+    }
+
     /** True when today asks you to sit for a while, rather than just remember. */
     public boolean hasTimedPractice() {
         return practiceMinutes > 0;
