@@ -9,6 +9,7 @@ import android.content.ClipboardManager;
 import android.content.ComponentName;
 import android.content.Intent;
 import android.content.SharedPreferences;
+import android.graphics.Color;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
@@ -52,6 +53,8 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 /**
  * The app's one screen, in two tabs.
@@ -1065,7 +1068,7 @@ public class MainActivity extends Activity implements Playback.Controller {
         // Selectable text swallows long-press, which is why long-pressing a
         // saved passage did nothing. These rows are read, not selected.
         body.setTextIsSelectable(false);
-        body.setText(p.text);
+        body.setText(withSentenceSuperscripts(p.text));
         body.setTextSize(16);
         body.setLineSpacing(0, 1.4f);
         body.setTextColor(0xFF1E1E1E);
@@ -1356,13 +1359,44 @@ public class MainActivity extends Activity implements Playback.Controller {
         return out;
     }
 
+    // A sentence number wedged between the end of one sentence and the start of
+    // the next — the same shape build_text_days.py lifts into a <sup> in the
+    // reading itself. Mirrors that heuristic so a saved passage shows its
+    // numbers as superscripts too.
+    private static final Pattern SAVED_SENTENCE_NUM = Pattern.compile(
+            "(?<=[A-Za-z”\"'?!.:;_)])\\s*(\\d{1,2})(?=[A-Z“\"'(])");
+
+    /**
+     * A saved passage keeps only the plain characters of the selection — the
+     * sentence-number superscripts were flattened to ordinary digits the moment
+     * the text was copied out of the reading. Re-raise them here, so the Saved
+     * tab reads like the passage did in place rather than "...happy.2And...".
+     */
+    private CharSequence withSentenceSuperscripts(String text) {
+        if (text == null || text.isEmpty()) return text == null ? "" : text;
+        SpannableStringBuilder sb = new SpannableStringBuilder(text);
+        Matcher m = SAVED_SENTENCE_NUM.matcher(text);
+        while (m.find()) {
+            sb.setSpan(new GentleSuperscript(), m.start(1), m.end(1),
+                    Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+        }
+        return sb;
+    }
+
     /**
      * A superscript that doesn't stretch its line: it shrinks the digit and
      * lifts it a little, keeping its top within the surrounding text's ascent,
      * so every line stays the same height whether or not it carries a number.
+     *
+     * It also fades the digit to a shade of whatever colour the body text is,
+     * so the reference marks stay subordinate to the reading. Deriving the tint
+     * from the current colour rather than fixing one keeps them legible in dark
+     * mode: a baked-in light taupe washed out once the phone's force-dark
+     * inverted the page, whereas a faded copy of the text colour inverts along
+     * with the text and stays readable either way.
      */
     private static class GentleSuperscript extends MetricAffectingSpan {
-        @Override public void updateDrawState(TextPaint p) { apply(p); }
+        @Override public void updateDrawState(TextPaint p) { apply(p); fade(p); }
         @Override public void updateMeasureState(TextPaint p) { apply(p); }
 
         private void apply(TextPaint p) {
@@ -1371,6 +1405,11 @@ public class MainActivity extends Activity implements Playback.Controller {
             // raised digit still fits under the line's normal top.
             p.baselineShift += (int) (p.ascent() * 0.30f);
             p.setTextSize(p.getTextSize() * 0.6f);
+        }
+
+        private void fade(TextPaint p) {
+            int c = p.getColor();
+            p.setColor(Color.argb(140, Color.red(c), Color.green(c), Color.blue(c)));
         }
     }
 

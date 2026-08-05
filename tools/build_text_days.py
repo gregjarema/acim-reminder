@@ -58,8 +58,13 @@ IT_OPEN, IT_CLOSE = "\x01", "\x02"
 # a digit wedged between the end of one sentence and the start of the next.
 # The marker characters count as sentence edges: a sentence can end on an
 # italic ("...be not afraid of it.") or begin with one ("11That they have").
+# A colon or semicolon ends a sentence too — the Course often introduces a
+# quoted instruction that way ("...and say: 3I desire this holy instant..."),
+# and leaving them out dropped 36 such numbers back to plain digits. The
+# underscore covers the one place an emphasis-close is spelt "_of._" rather
+# than italicised, which otherwise hid the number that followed it.
 SENTENCE_NUM_RE = re.compile(
-    rf"(?<=[A-Za-z”\"'?!.{IT_OPEN}{IT_CLOSE}])\s*(\d{{1,2}})([{IT_OPEN}]?)([A-Z“\"'(])")
+    rf"(?<=[A-Za-z”\"'?!.:;_{IT_OPEN}{IT_CLOSE}])\s*(\d{{1,2}})([{IT_OPEN}]?)([A-Z“\"'(])")
 
 # One day's page as saved: sentences carry an id of the form "219#6:9",
 # i.e. <source>#<paragraph>:<sentence>, and italics sit inside them.
@@ -169,11 +174,14 @@ def render_body(entry: dict, italics: list[tuple[int, list[str]]]) -> str:
             if cursor < len(italics):
                 text = mark_italics(text, italics[cursor][1])
                 cursor += 1
-            # The sentence numbers are reference marks, not content — keep them
-            # available but faint, so they don't compete with the reading.
+            # The sentence numbers are reference marks, not content. They're
+            # kept faint so they don't compete with the reading, but the tint
+            # is applied in the app (MainActivity.GentleSuperscript) rather than
+            # baked in here: a fixed colour washed out under the phone's dark
+            # mode, so the app fades a shade of the current text colour instead,
+            # which stays legible whichever way the theme falls.
             body = SENTENCE_NUM_RE.sub(
-                lambda m: f'<sup><font color="#BCB3A2">{m.group(1)}</font></sup>'
-                          f'{m.group(2)}{m.group(3)}',
+                lambda m: f'<sup>{m.group(1)}</sup>{m.group(2)}{m.group(3)}',
                 esc(text))
             body = body.replace(IT_OPEN, "<i>").replace(IT_CLOSE, "</i>")
             blocks.append(f"<b>{n}.</b> {body}" if n else body)
