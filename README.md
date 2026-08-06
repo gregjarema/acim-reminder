@@ -173,7 +173,7 @@ There are, though, **two ways a phone decides**, and they have to agree. The
 explicit `HINT_SUPPORTS_DARK_TEXT` is what the clock reads — but several OEM
 skins colour the status bar, date and notifications from the *lightness of the
 palette the wallpaper reports* instead. So the reported palette anchors to the
-paper's own tone (cream in daylight, near-black after dark). An earlier version
+paper's own tone (cream in daylight, black after dark). An earlier version
 reported the serif ink as a third of the palette — near-black on the light page
 — which dragged that second judgement the wrong way, leaving the clock dark but
 everything around it white. Redrawing on `onSurfaceRedrawNeeded` closes the same
@@ -184,7 +184,7 @@ Some skins, though, don't listen at all: they paint the lock screen's date,
 status bar and notifications white whatever any wallpaper reports, and only the
 clock ever follows it. There's no signal that reaches the rest, so the escape
 hatch is to change the one thing the app *does* control — the paper. **Dark
-lock-screen wallpaper** in the `⋯` menu forces the warm near-black page whatever
+lock-screen wallpaper** in the `⋯` menu forces the black page whatever
 the phone's own light/dark setting, so that fixed white text has a dark ground
 to sit on. It's off by default (the wallpaper follows the phone), takes effect
 the next time the lock screen draws, and reads from the same `acim` preferences

@@ -29,15 +29,16 @@ import java.time.temporal.ChronoUnit;
  */
 public class LessonWallpaperService extends WallpaperService {
 
-    // Two palettes. Light is the app's cream and ink; dark is a warm near-black
-    // rather than pure black, so it stays of a piece with the paper feel instead
-    // of looking like a different app after sunset.
+    // Two palettes. Light is the app's cream and ink; dark keeps the warm cream
+    // text and accents but sits them on pure black, which reads cleanest on an
+    // OLED lock screen and gives the phone's white system text the deepest
+    // ground to stand on.
     private static final int BACKGROUND = 0xFFF4F1EC;
     private static final int INK = 0xFF1A1A1A;
     private static final int ACCENT = 0xFF7A6646;
     private static final int FAINT = 0xFFA08A63;
 
-    private static final int BACKGROUND_DARK = 0xFF15130F;
+    private static final int BACKGROUND_DARK = 0xFF000000;
     private static final int INK_DARK = 0xFFEDE6D9;
     private static final int ACCENT_DARK = 0xFFC2A878;
     private static final int FAINT_DARK = 0xFF9A8A6C;
