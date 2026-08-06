@@ -355,14 +355,20 @@ public class MainActivity extends Activity implements Playback.Controller {
 
     private void showOverflow(View anchor) {
         android.widget.PopupMenu menu = new android.widget.PopupMenu(popupContext(), anchor);
-        final int JUMP = 1, WALLPAPER = 2, COPY = 3;
+        final int JUMP = 1, WALLPAPER = 2, COPY = 3, DARK_WP = 4;
 
-        if (selectedTab == TAB_WORKBOOK) {
-            menu.getMenu().add(Menu.NONE, JUMP, 0, "Jump to lesson…");
+        if (selectedTab == TAB_WORKBOOK || selectedTab == TAB_TEXT) {
+            menu.getMenu().add(Menu.NONE, JUMP, 0,
+                    selectedTab == TAB_TEXT ? "Jump to day…" : "Jump to lesson…");
             menu.getMenu().add(Menu.NONE, WALLPAPER, 1, "Use the live wallpaper…");
-        } else if (selectedTab == TAB_TEXT) {
-            menu.getMenu().add(Menu.NONE, JUMP, 0, "Jump to day…");
-            menu.getMenu().add(Menu.NONE, WALLPAPER, 1, "Use the live wallpaper…");
+            // Checkable escape hatch for phones that paint the lock screen's
+            // date and notifications white no matter what the wallpaper reports:
+            // forcing the dark paper gives that white text a dark ground.
+            MenuItem darkWp = menu.getMenu().add(Menu.NONE, DARK_WP, 2,
+                    "Dark lock-screen wallpaper");
+            darkWp.setCheckable(true);
+            darkWp.setChecked(prefs().getBoolean(
+                    LessonWallpaperService.KEY_FORCE_DARK, false));
         } else {
             menu.getMenu().add(Menu.NONE, COPY, 0, "Copy all passages");
         }
@@ -374,6 +380,7 @@ public class MainActivity extends Activity implements Playback.Controller {
                     else showJumpToLessonDialog();
                     return true;
                 case WALLPAPER: chooseWallpaper(); return true;
+                case DARK_WP: toggleDarkWallpaper(!item.isChecked()); return true;
                 case COPY: copyAllSaved(); return true;
                 default: return false;
             }
@@ -897,6 +904,20 @@ public class MainActivity extends Activity implements Playback.Controller {
                         Toast.LENGTH_SHORT).show();
             }
         }
+    }
+
+    /**
+     * Force the live wallpaper to the dark paper (or let it follow the phone
+     * again). The wallpaper reads this the next time it's drawn — which is the
+     * moment you lock the phone — so the change shows on the lock screen rather
+     * than here, once the wallpaper is set.
+     */
+    private void toggleDarkWallpaper(boolean on) {
+        prefs().edit().putBoolean(LessonWallpaperService.KEY_FORCE_DARK, on).apply();
+        Toast.makeText(this, on
+                        ? "Dark lock-screen wallpaper on — lock the phone to see it."
+                        : "Wallpaper follows the phone's light and dark mode again.",
+                Toast.LENGTH_LONG).show();
     }
 
     /** A plain-English line describing what today actually asks of you. */

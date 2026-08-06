@@ -180,6 +180,16 @@ everything around it white. Redrawing on `onSurfaceRedrawNeeded` closes the same
 gap for skins that sample a snapshot: they catch the real page, not a surface
 not yet painted into.
 
+Some skins, though, don't listen at all: they paint the lock screen's date,
+status bar and notifications white whatever any wallpaper reports, and only the
+clock ever follows it. There's no signal that reaches the rest, so the escape
+hatch is to change the one thing the app *does* control — the paper. **Dark
+lock-screen wallpaper** in the `⋯` menu forces the warm near-black page whatever
+the phone's own light/dark setting, so that fixed white text has a dark ground
+to sit on. It's off by default (the wallpaper follows the phone), takes effect
+the next time the lock screen draws, and reads from the same `acim` preferences
+the wallpaper already shares with the app.
+
 The lesson sits below the middle of the screen. Above it, it landed behind the
 media player's card on the lock screen — unreadable exactly when something was
 playing.

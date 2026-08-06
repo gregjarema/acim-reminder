@@ -42,6 +42,16 @@ public class LessonWallpaperService extends WallpaperService {
     private static final int ACCENT_DARK = 0xFFC2A878;
     private static final int FAINT_DARK = 0xFF9A8A6C;
 
+    // Some phones only ever paint the lock screen's date, status bar and
+    // notifications white, whatever a wallpaper tells them — the clock follows
+    // the wallpaper but nothing around it does. There, the cream page leaves
+    // that white text invisible by day. This preference forces the dark paper
+    // regardless of the phone's own light/dark setting, so the white system
+    // text has a dark ground under it the way it already does after sunset.
+    // Set from the "Dark lock-screen wallpaper" item in the app's ⋯ menu.
+    static final String PREFS = "acim";
+    static final String KEY_FORCE_DARK = "wallpaper_force_dark";
+
     /** Whichever engine is on screen, so a theme change can repaint it. */
     private LessonEngine active;
 
@@ -58,6 +68,13 @@ public class LessonWallpaperService extends WallpaperService {
         int mode = getResources().getConfiguration().uiMode
                 & android.content.res.Configuration.UI_MODE_NIGHT_MASK;
         return mode == android.content.res.Configuration.UI_MODE_NIGHT_YES;
+    }
+
+    /** The paper to draw: dark when the phone is dark, or when forced to. */
+    private boolean dark() {
+        return night()
+                || getSharedPreferences(PREFS, MODE_PRIVATE)
+                        .getBoolean(KEY_FORCE_DARK, false);
     }
 
     @Override
@@ -85,7 +102,7 @@ public class LessonWallpaperService extends WallpaperService {
          */
         @Override
         public WallpaperColors onComputeColors() {
-            boolean dark = night();
+            boolean dark = dark();
             toldDark = dark;
             int background = dark ? BACKGROUND_DARK : BACKGROUND;
             int accent = dark ? ACCENT_DARK : ACCENT;
@@ -170,8 +187,9 @@ public class LessonWallpaperService extends WallpaperService {
             }
             // The system caches the answer to onComputeColors, so a flip between
             // the light and dark palettes has to be announced or the lock screen
-            // keeps the text colour it chose for the other one.
-            if (toldDark == null || toldDark != night()) notifyColorsChanged();
+            // keeps the text colour it chose for the other one. This also carries
+            // a change to the force-dark preference through on the next paint.
+            if (toldDark == null || toldDark != dark()) notifyColorsChanged();
             scheduleMidnight();
         }
 
@@ -185,7 +203,7 @@ public class LessonWallpaperService extends WallpaperService {
         }
 
         private void render(Canvas canvas) {
-            boolean dark = night();
+            boolean dark = dark();
             int background = dark ? BACKGROUND_DARK : BACKGROUND;
             int ink = dark ? INK_DARK : INK;
             int accent = dark ? ACCENT_DARK : ACCENT;
