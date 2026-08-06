@@ -87,10 +87,24 @@ public class LessonWallpaperService extends WallpaperService {
         public WallpaperColors onComputeColors() {
             boolean dark = night();
             toldDark = dark;
+            int background = dark ? BACKGROUND_DARK : BACKGROUND;
+            int accent = dark ? ACCENT_DARK : ACCENT;
             return new WallpaperColors(
-                    Color.valueOf(dark ? BACKGROUND_DARK : BACKGROUND),
-                    Color.valueOf(dark ? ACCENT_DARK : ACCENT),
-                    Color.valueOf(dark ? INK_DARK : INK),
+                    // Primary and tertiary both anchor to the paper, the colour
+                    // that fills all but a few lines of the screen; the accent
+                    // is the one grace note. The old palette reported the serif
+                    // INK — near-black on the light page, near-white on the dark
+                    // one — as a third of itself, which reads as the opposite of
+                    // the wallpaper it describes. The clock trusted the explicit
+                    // hint below and went dark, but the status bar, date and
+                    // notifications don't: a good few OEM skins judge those from
+                    // the palette's own lightness, and a near-black third pulled
+                    // that judgement dark, leaving their text white on the cream.
+                    // Reporting a palette that matches the paper's own tone keeps
+                    // the two ways a skin can decide from contradicting.
+                    Color.valueOf(background),
+                    Color.valueOf(accent),
+                    Color.valueOf(background),
                     // Stated outright rather than left to be guessed from a
                     // bitmap: the sampling heuristic wants a nearly unbroken
                     // bright field, and a page of dark serif text over cream can
@@ -114,6 +128,16 @@ public class LessonWallpaperService extends WallpaperService {
         public void onSurfaceChanged(SurfaceHolder holder, int format, int w, int h) {
             width = w;
             height = h;
+            draw();
+        }
+
+        @Override
+        public void onSurfaceRedrawNeeded(SurfaceHolder holder) {
+            // The system asks for a fresh frame when it's about to read the
+            // wallpaper — including the snapshot some launchers and lock screens
+            // sample to pick their text colour. Painting on demand means that
+            // snapshot catches the actual cream page, not a surface we haven't
+            // drawn into yet (which would sample black and turn their text white).
             draw();
         }
 

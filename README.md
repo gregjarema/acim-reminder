@@ -169,6 +169,17 @@ answer is stated outright rather than sampled from a bitmap, because the
 sampling heuristic wants a nearly unbroken bright field and a page of dark serif
 text over cream can fall the wrong side of it.
 
+There are, though, **two ways a phone decides**, and they have to agree. The
+explicit `HINT_SUPPORTS_DARK_TEXT` is what the clock reads — but several OEM
+skins colour the status bar, date and notifications from the *lightness of the
+palette the wallpaper reports* instead. So the reported palette anchors to the
+paper's own tone (cream in daylight, near-black after dark). An earlier version
+reported the serif ink as a third of the palette — near-black on the light page
+— which dragged that second judgement the wrong way, leaving the clock dark but
+everything around it white. Redrawing on `onSurfaceRedrawNeeded` closes the same
+gap for skins that sample a snapshot: they catch the real page, not a surface
+not yet painted into.
+
 The lesson sits below the middle of the screen. Above it, it landed behind the
 media player's card on the lock screen — unreadable exactly when something was
 playing.
