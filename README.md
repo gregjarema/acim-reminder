@@ -235,6 +235,10 @@ happens whenever more Text days are transcribed.
   in whichever place is in front of you — and the bell rings again at the
   end, even if your screen is off and your phone is idle. Tap the countdown
   in the app to stop early.
+- **Haptics that follow your ringer switch:** each cue also gives a gentle
+  buzz — one pulse to open, three to close. Flip your phone to **Vibrate** and
+  you get *only* the buzz, no bell, so a sitting at your desk stays discreet;
+  on **Silent** it's neither buzz nor bell; on **Normal** you get both.
 - **The Text tab:** the day you're up to, with Marianne's session video playing
   inline the same way, and the reading below it — headings, paragraph numbers
   and the FIP sentence numbers as superscripts. No timer here, and no
@@ -294,6 +298,10 @@ grants at install.)
 > **Tip — bell volume:** the bells deliberately use your phone's **Alarm**
 > volume (not media volume), which is what lets the closing bell ring reliably
 > when your screen is off. If you can't hear the bell, turn up the Alarm volume.
+>
+> **Tip — silence the bell, keep the buzz:** flip your phone to **Vibrate** and
+> the meditation gives only a haptic pulse at the start and end — no bell. Handy
+> in a shared office. On **Silent** you get neither; on **Normal**, both.
 
 ---
 
@@ -358,8 +366,9 @@ app/src/main/java/com/acimreminder/app/
   Scheduler.java          arms the 16 daily reminder alarms
   ReminderReceiver.java   posts each hourly lesson reminder notification
   BeginReceiver.java      the notification's Begin button
-  MeditationService.java  the 5-minute timer, countdown notification, bells
+  MeditationService.java  the 5-minute timer, countdown notification, cues
   BellPlayer.java         plays a bell as alarm audio
+  Haptics.java            the start/end buzz cues
   EndBellReceiver.java    the exact alarm that fires the closing bell
   BootReceiver.java       re-arms reminders after a reboot
   Notify.java             notification channels

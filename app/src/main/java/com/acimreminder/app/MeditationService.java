@@ -8,6 +8,7 @@ import android.app.Service;
 import android.content.Context;
 import android.content.Intent;
 import android.content.pm.ServiceInfo;
+import android.media.AudioManager;
 import android.os.IBinder;
 import android.os.SystemClock;
 import android.util.Log;
@@ -19,10 +20,14 @@ import androidx.core.app.NotificationCompat;
  * Runs one 5-minute meditation.
  *
  * Flow:
- *   ACTION_START  -> go foreground with a live countdown notification, play the
- *                    opening bell, and schedule an exact alarm for the end.
- *   ACTION_END    -> (fired by that exact alarm) play the closing bell, then stop.
- *   ACTION_STOP   -> user cancelled: drop the end alarm and stop, no bell.
+ *   ACTION_START  -> go foreground with a live countdown notification, sound the
+ *                    opening cue, and schedule an exact alarm for the end.
+ *   ACTION_END    -> (fired by that exact alarm) sound the closing cue, then stop.
+ *   ACTION_STOP   -> user cancelled: drop the end alarm and stop, no cue.
+ *
+ * Each cue is a bell plus a buzz, and it honours the phone's ringer switch so a
+ * sitting at your desk stays discreet: Normal rings the bell and buzzes, Vibrate
+ * buzzes only (no bell), Silent does neither. See {@link #playCue}.
  *
  * Why a foreground service + a separate exact alarm? A plain in-app timer can be
  * frozen by Doze when the screen is off, which is exactly when you'd miss the
@@ -89,7 +94,7 @@ public class MeditationService extends Service {
                 ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PLAYBACK);
 
         scheduleEndAlarm(endTime);
-        BellPlayer.play(this, R.raw.bell_start, null);
+        playCue(R.raw.bell_start, Haptics.START, null);
     }
 
     private void handleEnd() {
@@ -98,8 +103,39 @@ public class MeditationService extends Service {
         startForeground(MED_NOTIF_ID, buildCompleting(),
                 ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PLAYBACK);
         cancelEndAlarm();
-        // Stop only once the closing bell has finished ringing.
-        BellPlayer.play(this, R.raw.bell_end, this::finish);
+        // Stop only once the closing cue has been delivered.
+        playCue(R.raw.bell_end, Haptics.END, this::finish);
+    }
+
+    /**
+     * Sound one meditation cue, honouring the phone's ringer switch so a sitting
+     * in a quiet office doesn't ring out loud:
+     *
+     *   Normal   -> bell + buzz
+     *   Vibrate  -> buzz only (no bell)
+     *   Silent   -> neither
+     *
+     * The bells are ALARM audio and so would otherwise play through Vibrate and
+     * Silent; reading the ringer mode here is what makes them defer to it.
+     *
+     * {@code onDone} (may be null) runs once the cue is delivered — after the
+     * bell finishes when there is one, or right after the buzz otherwise — so the
+     * closing cue can chain {@link #finish()}. The buzz is fire-and-forget: the
+     * system vibrator keeps going even if the service stops immediately after.
+     */
+    private void playCue(int rawResId, long[] haptic, BellPlayer.OnDone onDone) {
+        AudioManager am = getSystemService(AudioManager.class);
+        int mode = am != null ? am.getRingerMode() : AudioManager.RINGER_MODE_NORMAL;
+
+        if (mode != AudioManager.RINGER_MODE_SILENT) {
+            Haptics.buzz(this, haptic);
+        }
+
+        if (mode == AudioManager.RINGER_MODE_NORMAL) {
+            BellPlayer.play(this, rawResId, onDone);
+        } else if (onDone != null) {
+            onDone.done();
+        }
     }
 
     /**
