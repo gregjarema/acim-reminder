@@ -14,31 +14,21 @@ import androidx.core.app.NotificationManagerCompat;
  */
 public class ReminderReceiver extends BroadcastReceiver {
 
-    /** Base notification id; each slot gets its own so they don't collide. */
-    static final int NOTIF_BASE = 2000;
-
     /**
-     * The single id every reminder on a review day posts under. A review day
-     * nudges you often — Review III fires every half hour — and stacking a
-     * fresh notification each time buries the phone in stale ones. Posting them
-     * all under one id means each simply replaces the last, so only the most
-     * recent is ever on screen. Kept below {@link #NOTIF_BASE} so it can never
-     * collide with a per-slot id.
+     * Every reminder posts under this one id, so a newer reminder simply
+     * replaces the one already on screen — you only ever have a single practice
+     * nudge, never a pile of stale ones stacking up through the day. This holds
+     * across both of a day's tracks (a timed sitting and a passing remembrance)
+     * and across a review day's frequent nudges alike.
+     *
+     * The meditation countdown is deliberately NOT this: it is a separate
+     * notification with its own id and channel, so it sits alongside a reminder
+     * rather than replacing it.
      */
-    static final int NOTIF_REVIEW = 1999;
+    static final int NOTIF_REMINDER = 2000;
 
     /** Carries the posted notification's id to "Begin", so it can clear it. */
     static final String EXTRA_NOTIF_ID = "notif_id";
-
-    /**
-     * The id a slot's reminder is posted under. Slots are not always on the
-     * hour — a lesson asking for practice every half hour has two a hour — so
-     * the minute has to be part of the id, and anything wanting to cancel a
-     * reminder must compute it the same way.
-     */
-    static int notifId(int hour, int minute) {
-        return NOTIF_BASE + (hour >= 0 ? hour * 100 + minute : 0);
-    }
 
     @Override
     public void onReceive(Context ctx, Intent intent) {
@@ -57,11 +47,9 @@ public class ReminderReceiver extends BroadcastReceiver {
 
     private void postReminder(Context ctx, int hour, int minute, boolean sitting) {
         Lesson lesson = Lessons.today(ctx);
-        // On a review day every reminder shares one id, so each replaces the last
-        // and only the most recent stays on screen. Ordinary days keep a per-slot
-        // id so two tracks at once (a sitting and a remembrance) don't clobber
-        // each other.
-        int notifId = lesson.isReviewDay() ? NOTIF_REVIEW : notifId(hour, minute);
+        // All reminders share one id, so each new nudge replaces the one already
+        // showing — a single reminder on screen, never a stack.
+        int notifId = NOTIF_REMINDER;
         String headline;
         String rest;
         if (lesson.isReview()) {
