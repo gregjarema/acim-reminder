@@ -86,8 +86,14 @@ public final class Scheduler {
             if (seen.add(slotId(hm[0], hm[1]))) out.add(new int[]{hm[0], hm[1], 1});
         }
         if (lesson.hourlyRemembrance) {
-            for (int hour = START_HOUR; hour <= END_HOUR; hour++) {
-                if (seen.add(slotId(hour, 0))) out.add(new int[]{hour, 0, 0});
+            // Usually on the hour (step 60). A lesson asking to be recalled more
+            // often — Lesson 122, every quarter hour — steps by 15. Snap to the
+            // app's clean grid so every slot is one we also know how to cancel.
+            int step = lesson.remembranceEveryMinutes;
+            step = step >= 60 ? 60 : (step >= 30 ? 30 : 15);
+            for (int minutes = START_HOUR * 60; minutes <= END_HOUR * 60; minutes += step) {
+                int hour = minutes / 60, minute = minutes % 60;
+                if (seen.add(slotId(hour, minute))) out.add(new int[]{hour, minute, 0});
             }
         }
         // A review day (Review III) carries two thoughts and asks for one on the
