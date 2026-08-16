@@ -41,10 +41,9 @@ public final class Lesson {
     /**
      * Minutes between those passing remembrances, when {@link #hourlyRemembrance}
      * is set. 60 — the default — is the usual "on the hour" cadence. A lesson
-     * that asks to be recalled more often sets this smaller: Lesson 122's "hold
-     * them firmly in your mind by your attempts to think of them at least a
-     * minute as each quarter of an hour passes by" is 15. Snapped to the app's
-     * 15-minute scheduling grid.
+     * that asks to be recalled more often sets this smaller: Lesson 122's "each
+     * quarter of an hour" is 15; Lesson 91's "five or six times an hour" is 10.
+     * The scheduler snaps it to a supported step (10, 15, 20, 30 or 60).
      */
     public final int remembranceEveryMinutes;
     /** The lines to hold during practice — the reminder's subtext. */

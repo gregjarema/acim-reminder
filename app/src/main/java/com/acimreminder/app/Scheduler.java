@@ -66,8 +66,12 @@ public final class Scheduler {
                 + Lessons.today(ctx).number);
     }
 
-    /** Every minute-of-hour we ever schedule at, so we know what to cancel. */
-    private static final int[] ALL_MINUTES = {0, 15, 30, 45};
+    /**
+     * Every minute-of-hour we ever schedule at, so we know what to cancel.
+     * Covers the remembrance steps we support — 10, 15, 20, 30 and 60 minutes —
+     * whose slots off the hour land on exactly these marks.
+     */
+    private static final int[] ALL_MINUTES = {0, 10, 15, 20, 30, 40, 45, 50};
 
     /**
      * The times of day this lesson asks to be reminded at, within the practice
@@ -87,10 +91,11 @@ public final class Scheduler {
         }
         if (lesson.hourlyRemembrance) {
             // Usually on the hour (step 60). A lesson asking to be recalled more
-            // often — Lesson 122, every quarter hour — steps by 15. Snap to the
-            // app's clean grid so every slot is one we also know how to cancel.
+            // often steps smaller — Lesson 122 every quarter hour (15), Lesson 91
+            // every ten minutes. Snap to a supported step so every slot lands on
+            // a mark we also know how to cancel (see ALL_MINUTES).
             int step = lesson.remembranceEveryMinutes;
-            step = step >= 60 ? 60 : (step >= 30 ? 30 : 15);
+            step = step >= 60 ? 60 : step >= 30 ? 30 : step >= 20 ? 20 : step >= 15 ? 15 : 10;
             for (int minutes = START_HOUR * 60; minutes <= END_HOUR * 60; minutes += step) {
                 int hour = minutes / 60, minute = minutes % 60;
                 if (seen.add(slotId(hour, minute))) out.add(new int[]{hour, minute, 0});
