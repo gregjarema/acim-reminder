@@ -37,7 +37,13 @@ public class ReminderReceiver extends BroadcastReceiver {
         boolean sitting = intent.getBooleanExtra(Scheduler.EXTRA_SITTING, true);
 
         Notify.ensureChannels(ctx);
-        postReminder(ctx, hour, minute, sitting);
+        // Hold off while a meditation is running: a remembrance nudge (or the
+        // next sitting's) firing mid-sitting would interrupt the very quiet it
+        // is calling you to. The slot is simply skipped, not rescheduled for
+        // later — the next one comes round on its own.
+        if (!MeditationService.isRunning(ctx)) {
+            postReminder(ctx, hour, minute, sitting);
+        }
 
         // Keep the cycle going. Re-arm the whole day rather than just this slot:
         // the lesson changes at midnight and the next one may want entirely

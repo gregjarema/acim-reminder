@@ -56,6 +56,17 @@ public class MeditationService extends Service {
     }
 
     /**
+     * True while a meditation is running — its recorded end time is still in the
+     * future. Reminders use this to hold off during a sitting rather than
+     * interrupting it; the value is cleared the moment the session ends.
+     */
+    public static boolean isRunning(Context ctx) {
+        long endAt = ctx.getSharedPreferences(OnboardingActivity.PREFS, Context.MODE_PRIVATE)
+                .getLong(KEY_MEDITATION_END_AT, 0L);
+        return endAt > System.currentTimeMillis();
+    }
+
+    /**
      * Wall-clock end time of the running session (0 = none), in
      * {@link OnboardingActivity#PREFS}. Lets MainActivity mirror the same
      * countdown shown in the notification, even after a cold start.
