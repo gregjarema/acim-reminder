@@ -73,6 +73,19 @@ public class MeditationService extends Service {
      */
     public static final String KEY_MEDITATION_END_AT = "meditation_end_at";
 
+    /**
+     * User toggle (Workbook overflow menu): turn on Do Not Disturb for the length
+     * of each sitting. Off by default, and inert until "Do Not Disturb access" is
+     * granted in Settings.
+     */
+    public static final String KEY_DND_ENABLED = "dnd_during_meditation";
+    /**
+     * The interruption filter in force when a sitting began, saved so it can be
+     * put back afterwards — in prefs, not a field, because the closing bell can
+     * fire in a freshly restarted process. 0 (UNKNOWN) means nothing to restore.
+     */
+    private static final String KEY_PREV_DND_FILTER = "dnd_prev_filter";
+
     private static final int MED_NOTIF_ID = 3001;
     private static final int END_ALARM_REQUEST = 9001;
 
@@ -104,8 +117,45 @@ public class MeditationService extends Service {
         startForeground(MED_NOTIF_ID, buildCountdown(endTime),
                 ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PLAYBACK);
 
+        applyDnd();
         scheduleEndAlarm(endTime);
         playCue(R.raw.bell_start, Haptics.START, null);
+    }
+
+    /**
+     * If the user has opted in and granted Do Not Disturb access, silence the
+     * phone for the sitting — but at the "alarms only" level, so the closing bell
+     * (which is ALARM audio) still rings. The filter in force now is saved so
+     * {@link #restoreDnd()} can put it back when the sitting ends.
+     */
+    private void applyDnd() {
+        if (!getSharedPreferences(OnboardingActivity.PREFS, MODE_PRIVATE)
+                .getBoolean(KEY_DND_ENABLED, false)) return;
+        NotificationManager nm = getSystemService(NotificationManager.class);
+        if (nm == null || !nm.isNotificationPolicyAccessGranted()) return;
+        try {
+            getSharedPreferences(OnboardingActivity.PREFS, MODE_PRIVATE).edit()
+                    .putInt(KEY_PREV_DND_FILTER, nm.getCurrentInterruptionFilter()).apply();
+            nm.setInterruptionFilter(NotificationManager.INTERRUPTION_FILTER_ALARMS);
+        } catch (Exception e) {
+            Log.w(TAG, "Could not turn on Do Not Disturb", e);
+        }
+    }
+
+    /** Put back whatever interruption filter was in force before the sitting. */
+    private void restoreDnd() {
+        int prev = getSharedPreferences(OnboardingActivity.PREFS, MODE_PRIVATE)
+                .getInt(KEY_PREV_DND_FILTER, 0);
+        if (prev == 0) return;   // nothing was saved
+        getSharedPreferences(OnboardingActivity.PREFS, MODE_PRIVATE)
+                .edit().remove(KEY_PREV_DND_FILTER).apply();
+        NotificationManager nm = getSystemService(NotificationManager.class);
+        if (nm == null || !nm.isNotificationPolicyAccessGranted()) return;
+        try {
+            nm.setInterruptionFilter(prev);
+        } catch (Exception e) {
+            Log.w(TAG, "Could not restore Do Not Disturb", e);
+        }
     }
 
     private void handleEnd() {
@@ -173,6 +223,7 @@ public class MeditationService extends Service {
     }
 
     private void finish() {
+        restoreDnd();
         getSharedPreferences(OnboardingActivity.PREFS, MODE_PRIVATE)
                 .edit().remove(KEY_MEDITATION_END_AT).apply();
         stopForeground(STOP_FOREGROUND_REMOVE);

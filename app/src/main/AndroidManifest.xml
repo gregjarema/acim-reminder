@@ -23,6 +23,11 @@
     <!-- Vibrate on reminder notifications. -->
     <uses-permission android:name="android.permission.VIBRATE" />
 
+    <!-- Turn on Do Not Disturb for the length of a meditation (opt-in). Holding
+         this lets the app change the interruption filter, but only once you grant
+         "Do Not Disturb access" in Settings; nothing changes until you do. -->
+    <uses-permission android:name="android.permission.ACCESS_NOTIFICATION_POLICY" />
+
     <!-- Ask the OS to stop battery-optimising this app so it isn't killed. -->
     <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
 

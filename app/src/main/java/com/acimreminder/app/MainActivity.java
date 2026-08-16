@@ -355,7 +355,7 @@ public class MainActivity extends Activity implements Playback.Controller {
 
     private void showOverflow(View anchor) {
         android.widget.PopupMenu menu = new android.widget.PopupMenu(popupContext(), anchor);
-        final int JUMP = 1, WALLPAPER = 2, COPY = 3, DARK_WP = 4;
+        final int JUMP = 1, WALLPAPER = 2, COPY = 3, DARK_WP = 4, DND = 5;
 
         if (selectedTab == TAB_WORKBOOK || selectedTab == TAB_TEXT) {
             menu.getMenu().add(Menu.NONE, JUMP, 0,
@@ -369,6 +369,11 @@ public class MainActivity extends Activity implements Playback.Controller {
             darkWp.setCheckable(true);
             darkWp.setChecked(prefs().getBoolean(
                     LessonWallpaperService.KEY_FORCE_DARK, false));
+            // Turn the phone to Do Not Disturb for the length of each sitting.
+            MenuItem dnd = menu.getMenu().add(Menu.NONE, DND, 3,
+                    "Silence with Do Not Disturb");
+            dnd.setCheckable(true);
+            dnd.setChecked(prefs().getBoolean(MeditationService.KEY_DND_ENABLED, false));
         } else {
             menu.getMenu().add(Menu.NONE, COPY, 0, "Copy all passages");
         }
@@ -381,6 +386,7 @@ public class MainActivity extends Activity implements Playback.Controller {
                     return true;
                 case WALLPAPER: chooseWallpaper(); return true;
                 case DARK_WP: toggleDarkWallpaper(!item.isChecked()); return true;
+                case DND: toggleDnd(!item.isChecked()); return true;
                 case COPY: copyAllSaved(); return true;
                 default: return false;
             }
@@ -918,6 +924,36 @@ public class MainActivity extends Activity implements Playback.Controller {
                         ? "Dark lock-screen wallpaper on — lock the phone to see it."
                         : "Wallpaper follows the phone's light and dark mode again.",
                 Toast.LENGTH_LONG).show();
+    }
+
+    /**
+     * Turn on (or off) automatic Do Not Disturb during a sitting. Changing the
+     * interruption filter needs a one-time "Do Not Disturb access" grant, so the
+     * first time it's switched on without that access we send you to the right
+     * Settings screen; the preference is remembered and takes effect once granted.
+     */
+    private void toggleDnd(boolean on) {
+        prefs().edit().putBoolean(MeditationService.KEY_DND_ENABLED, on).apply();
+        if (!on) {
+            Toast.makeText(this, "Meditations won't change Do Not Disturb.",
+                    Toast.LENGTH_SHORT).show();
+            return;
+        }
+        android.app.NotificationManager nm = getSystemService(android.app.NotificationManager.class);
+        if (nm != null && !nm.isNotificationPolicyAccessGranted()) {
+            Toast.makeText(this, "Grant Do Not Disturb access so a sitting can "
+                    + "silence notifications.", Toast.LENGTH_LONG).show();
+            try {
+                startActivity(new Intent(
+                        android.provider.Settings.ACTION_NOTIFICATION_POLICY_ACCESS_SETTINGS));
+            } catch (Exception ignored) {
+                // No such settings screen on this device; the toggle still stands
+                // and will apply if access is granted some other way.
+            }
+        } else {
+            Toast.makeText(this, "A sitting will silence notifications — your "
+                    + "closing bell still rings.", Toast.LENGTH_LONG).show();
+        }
     }
 
     /** A plain-English line describing what today actually asks of you. */
