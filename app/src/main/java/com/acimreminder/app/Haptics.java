@@ -1,6 +1,7 @@
 package com.acimreminder.app;
 
 import android.content.Context;
+import android.os.VibrationAttributes;
 import android.os.VibrationEffect;
 import android.os.Vibrator;
 import android.os.VibratorManager;
@@ -12,10 +13,23 @@ import android.os.VibratorManager;
  * Two patterns, echoing the bells: one soft pulse to open the sitting, three to
  * close it. Fired once, no repeat.
  *
- * minSdk is 33, so {@link VibratorManager} (API 31) and {@link VibrationEffect}
- * (API 26) are always present — no version guards needed.
+ * minSdk is 33, so {@link VibratorManager} (API 31), {@link VibrationEffect}
+ * (API 26) and {@link VibrationAttributes} (API 30) are always present — no
+ * version guards needed.
  */
 public final class Haptics {
+
+    /**
+     * Tag every buzz as ALARM, the same class as the bell. Without this the
+     * vibration is a generic one, which Do Not Disturb (and the phone's
+     * vibrate/lock policy) can suppress — so with the "Silence with Do Not
+     * Disturb" option on, the closing buzz would be filtered out just when it's
+     * the only cue left. Alarm-usage vibrations pass through, as the bell does.
+     */
+    private static final VibrationAttributes ALARM_VIBRATION =
+            new VibrationAttributes.Builder()
+                    .setUsage(VibrationAttributes.USAGE_ALARM)
+                    .build();
 
     /** One soft pulse to open the sitting — the haptic of the opening bell. */
     public static final long[] START = {0, 220};
@@ -32,8 +46,9 @@ public final class Haptics {
         if (vm == null) return;
         Vibrator v = vm.getDefaultVibrator();
         if (v == null || !v.hasVibrator()) return;
-        // -1 = play through once and stop (no repeat index).
-        v.vibrate(VibrationEffect.createWaveform(pattern, -1));
+        // -1 = play through once and stop (no repeat index). ALARM usage so Do
+        // Not Disturb and the lock/vibrate policy let it through, like the bell.
+        v.vibrate(VibrationEffect.createWaveform(pattern, -1), ALARM_VIBRATION);
     }
 
     private Haptics() {}
