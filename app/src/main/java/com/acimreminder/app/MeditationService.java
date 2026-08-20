@@ -242,15 +242,31 @@ public class MeditationService extends Service {
     private void scheduleEndAlarm(long endTime) {
         AlarmManager am = getSystemService(AlarmManager.class);
         if (am == null) return;
-        PendingIntent pi = endAlarmPendingIntent();
+        PendingIntent operation = endAlarmPendingIntent();
+
+        // setAlarmClock is the strongest "this must fire" alarm Android offers:
+        // exact even in Doze, no exact-alarm permission needed, and — crucially —
+        // firing one grants a temporary allowance to start a foreground service
+        // from the background. That last part is what lets handleEnd sound the
+        // closing bell with the screen locked; a plain exact alarm's exemption is
+        // weaker and some phones drop the background service start, so the end
+        // bell would silently not ring. It does surface a small alarm indicator
+        // while the sitting is pending, which is a fair trade for reliability.
+        Intent open = new Intent(this, MainActivity.class)
+                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
+        PendingIntent showPi = PendingIntent.getActivity(
+                this, END_ALARM_REQUEST, open,
+                PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
         try {
-            if (am.canScheduleExactAlarms()) {
-                am.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, endTime, pi);
-            } else {
-                am.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, endTime, pi);
+            am.setAlarmClock(new AlarmManager.AlarmClockInfo(endTime, showPi), operation);
+        } catch (Exception e) {
+            // Fall back to an exact idle alarm if setAlarmClock is ever refused.
+            Log.w(TAG, "setAlarmClock failed; falling back to exact idle alarm", e);
+            try {
+                am.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, endTime, operation);
+            } catch (SecurityException se) {
+                am.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, endTime, operation);
             }
-        } catch (SecurityException e) {
-            am.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, endTime, pi);
         }
     }
 
