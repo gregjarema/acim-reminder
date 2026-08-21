@@ -191,13 +191,35 @@ public final class Lesson {
 
     /**
      * The fuller form to hold during practice, falling back to the idea when a
-     * lesson gives no separate verse. May contain '\n' between verse lines.
+     * lesson gives no separate verse. May contain '\n' between verse lines —
+     * but only where a line actually ends a sentence; see {@link #flowThought}.
      */
     public String meditationText() {
         String s = meditationText != null && !meditationText.isEmpty()
                 ? meditationText
                 : (meditation != null && !meditation.isEmpty() ? meditation : phrase);
-        return tidy(s);
+        return flowThought(tidy(s));
+    }
+
+    /**
+     * The stored thought carries the original email's line wrapping as '\n', so
+     * a flowing sentence gets chopped at arbitrary points ("...a different kind
+     * of\nthought..."). Keep a break only where the line ends a sentence — a
+     * real verse line, like "Forgiveness offers everything I want." — and join
+     * the rest back into flowing text with a space.
+     */
+    private static String flowThought(String s) {
+        if (s == null || s.indexOf('\n') < 0) return s;
+        String[] lines = s.split("\n", -1);
+        StringBuilder out = new StringBuilder(s.length());
+        for (int i = 0; i < lines.length; i++) {
+            out.append(lines[i]);
+            if (i == lines.length - 1) break;
+            String t = lines[i].trim();
+            char last = t.isEmpty() ? ' ' : t.charAt(t.length() - 1);
+            out.append(last == '.' || last == '?' || last == '!' ? '\n' : ' ');
+        }
+        return out.toString();
     }
 
     /**
