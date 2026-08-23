@@ -4,6 +4,8 @@ import android.app.Notification;
 import android.app.NotificationChannel;
 import android.app.NotificationManager;
 import android.content.Context;
+import android.media.AudioAttributes;
+import android.net.Uri;
 
 /**
  * Notification channels. Channels are how Android 8+ lets the user control the
@@ -21,6 +23,15 @@ public final class Notify {
 
     public static final String CH_REMINDERS = "reminders_v2";
     public static final String CH_MEDITATION = "meditation_v2";
+    /**
+     * The end-of-sitting alert. Unlike the silent countdown channel, this one
+     * carries the closing bell as its own sound and a matching buzz, so the
+     * <em>system</em> sounds it when a sitting finishes — reliably, even with the
+     * screen locked or the app long since backgrounded, where an in-process
+     * player was dropping it. ALARM audio attributes so it plays at alarm volume
+     * and carries through Do Not Disturb, exactly as the opening bell does.
+     */
+    public static final String CH_MEDITATION_DONE = "meditation_done_v1";
 
     public static void ensureChannels(Context ctx) {
         NotificationManager nm = ctx.getSystemService(NotificationManager.class);
@@ -49,8 +60,27 @@ public final class Notify {
         meditation.enableVibration(false);
         meditation.setLockscreenVisibility(Notification.VISIBILITY_PUBLIC);
 
+        // The closing-bell alert. HIGH so it can alert with the screen locked;
+        // its sound is the bundled end bell, tagged ALARM so it plays at alarm
+        // volume and through Do Not Disturb. Vibration matches Haptics.END. Only
+        // posted in Normal ringer mode — Vibrate/Silent use the silent channel
+        // above plus a direct buzz — so this channel's alarm sound never rings
+        // when the phone is meant to be quiet.
+        NotificationChannel done = new NotificationChannel(
+                CH_MEDITATION_DONE, "Meditation complete", NotificationManager.IMPORTANCE_HIGH);
+        done.setDescription("The closing bell when a sitting finishes.");
+        Uri bell = Uri.parse("android.resource://" + ctx.getPackageName() + "/" + R.raw.bell_end);
+        done.setSound(bell, new AudioAttributes.Builder()
+                .setUsage(AudioAttributes.USAGE_ALARM)
+                .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
+                .build());
+        done.enableVibration(true);
+        done.setVibrationPattern(Haptics.END);
+        done.setLockscreenVisibility(Notification.VISIBILITY_PUBLIC);
+
         nm.createNotificationChannel(reminders);
         nm.createNotificationChannel(meditation);
+        nm.createNotificationChannel(done);
     }
 
     private Notify() {}

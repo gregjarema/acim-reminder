@@ -160,12 +160,58 @@ public class MeditationService extends Service {
 
     private void handleEnd() {
         Notify.ensureChannels(this);
-        // Re-assert foreground in case the process was restarted just to run this.
+        // Re-assert foreground in case the process was restarted just to run this;
+        // the alarm launches us via startForegroundService, so we must go
+        // foreground promptly. This placeholder is taken down again in finish().
         startForeground(MED_NOTIF_ID, buildCompleting(),
                 ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PLAYBACK);
         cancelEndAlarm();
-        // Stop only once the closing cue has been delivered.
-        playCue(R.raw.bell_end, Haptics.END, this::finish);
+        // Deliver the closing cue as a notification the SYSTEM sounds, rather than
+        // an in-process player: it fires reliably even when the phone is locked or
+        // the process is being reclaimed — exactly when the old MediaPlayer bell
+        // was silently dropping. The cue lives on independently, so we can stop
+        // right after posting it.
+        postCompletion();
+        finish();
+    }
+
+    private static final int MED_DONE_NOTIF_ID = 3002;
+
+    /**
+     * Post the "Practice complete" alert. Its sound and vibration are the
+     * notification channel's, so the system plays them — reliable with the screen
+     * locked. Ringer-aware, like the opening cue: Normal uses the sounding
+     * channel (bell + buzz); Vibrate uses the silent channel plus a direct buzz;
+     * Silent shows a silent notification only. It clears itself after ten seconds.
+     */
+    private void postCompletion() {
+        NotificationManager nm = getSystemService(NotificationManager.class);
+        if (nm == null) return;
+        AudioManager am = getSystemService(AudioManager.class);
+        int mode = am != null ? am.getRingerMode() : AudioManager.RINGER_MODE_NORMAL;
+
+        boolean ring = mode == AudioManager.RINGER_MODE_NORMAL;
+        if (!ring && mode != AudioManager.RINGER_MODE_SILENT) {
+            Haptics.buzz(this, Haptics.END);
+        }
+
+        Intent open = new Intent(this, MainActivity.class)
+                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
+        PendingIntent openPi = PendingIntent.getActivity(
+                this, 0, open, PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
+
+        Notification n = new NotificationCompat.Builder(this,
+                ring ? Notify.CH_MEDITATION_DONE : Notify.CH_MEDITATION)
+                .setSmallIcon(R.drawable.ic_stat_bell)
+                .setContentTitle("Practice complete")
+                .setContentText(Lessons.today(this).idea())
+                .setCategory(NotificationCompat.CATEGORY_ALARM)
+                .setAutoCancel(true)
+                .setTimeoutAfter(10_000L)   // clears itself after ten seconds
+                .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
+                .setContentIntent(openPi)
+                .build();
+        nm.notify(MED_DONE_NOTIF_ID, n);
     }
 
     /**
