@@ -97,7 +97,10 @@ public class MeditationService extends Service {
         if (ACTION_START.equals(action)) {
             handleStart();
         } else if (ACTION_END.equals(action)) {
-            handleEnd();
+            // The end is now handled directly by EndBellReceiver (see endNow),
+            // which doesn't need this service to be running. Tolerate a stray
+            // ACTION_END by ending cleanly anyway.
+            endNow(this);
         } else if (ACTION_STOP.equals(action)) {
             handleStop();
         } else {
@@ -126,7 +129,7 @@ public class MeditationService extends Service {
      * If the user has opted in and granted Do Not Disturb access, silence the
      * phone for the sitting — but at the "alarms only" level, so the closing bell
      * (which is ALARM audio) still rings. The filter in force now is saved so
-     * {@link #restoreDnd()} can put it back when the sitting ends.
+     * {@link #restoreDnd(Context)} can put it back when the sitting ends.
      */
     private void applyDnd() {
         if (!getSharedPreferences(OnboardingActivity.PREFS, MODE_PRIVATE)
@@ -143,13 +146,13 @@ public class MeditationService extends Service {
     }
 
     /** Put back whatever interruption filter was in force before the sitting. */
-    private void restoreDnd() {
-        int prev = getSharedPreferences(OnboardingActivity.PREFS, MODE_PRIVATE)
+    static void restoreDnd(Context ctx) {
+        int prev = ctx.getSharedPreferences(OnboardingActivity.PREFS, Context.MODE_PRIVATE)
                 .getInt(KEY_PREV_DND_FILTER, 0);
         if (prev == 0) return;   // nothing was saved
-        getSharedPreferences(OnboardingActivity.PREFS, MODE_PRIVATE)
+        ctx.getSharedPreferences(OnboardingActivity.PREFS, Context.MODE_PRIVATE)
                 .edit().remove(KEY_PREV_DND_FILTER).apply();
-        NotificationManager nm = getSystemService(NotificationManager.class);
+        NotificationManager nm = ctx.getSystemService(NotificationManager.class);
         if (nm == null || !nm.isNotificationPolicyAccessGranted()) return;
         try {
             nm.setInterruptionFilter(prev);
@@ -158,24 +161,29 @@ public class MeditationService extends Service {
         }
     }
 
-    private void handleEnd() {
-        Notify.ensureChannels(this);
-        // Re-assert foreground in case the process was restarted just to run this;
-        // the alarm launches us via startForegroundService, so we must go
-        // foreground promptly. This placeholder is taken down again in finish().
-        startForeground(MED_NOTIF_ID, buildCompleting(),
-                ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PLAYBACK);
-        cancelEndAlarm();
-        // Deliver the closing cue as a notification the SYSTEM sounds, rather than
-        // an in-process player: it fires reliably even when the phone is locked or
-        // the process is being reclaimed — exactly when the old MediaPlayer bell
-        // was silently dropping. The cue lives on independently, so we can stop
-        // right after posting it.
-        postCompletion();
-        finish();
-    }
-
     private static final int MED_DONE_NOTIF_ID = 3002;
+
+    /**
+     * End the sitting straight from the alarm receiver, WITHOUT depending on this
+     * service still being alive. Post the closing cue (a notification the system
+     * sounds), put Do Not Disturb back, clear the running-session marker, take
+     * down the live countdown, and release the service if it's still around.
+     *
+     * The old path started a foreground service here to play the bell — which is
+     * exactly what some phones refuse or kill once the screen is locked, so the
+     * end bell silently never rang. A broadcast receiver posting a notification
+     * needs none of that, and fires even if the process was already reclaimed.
+     */
+    static void endNow(Context ctx) {
+        Notify.ensureChannels(ctx);
+        postCompletion(ctx);
+        restoreDnd(ctx);
+        ctx.getSharedPreferences(OnboardingActivity.PREFS, Context.MODE_PRIVATE)
+                .edit().remove(KEY_MEDITATION_END_AT).apply();
+        NotificationManager nm = ctx.getSystemService(NotificationManager.class);
+        if (nm != null) nm.cancel(MED_NOTIF_ID);   // take down the live countdown
+        ctx.stopService(new Intent(ctx, MeditationService.class));
+    }
 
     /**
      * Post the "Practice complete" alert. Its sound and vibration are the
@@ -184,27 +192,27 @@ public class MeditationService extends Service {
      * channel (bell + buzz); Vibrate uses the silent channel plus a direct buzz;
      * Silent shows a silent notification only. It clears itself after ten seconds.
      */
-    private void postCompletion() {
-        NotificationManager nm = getSystemService(NotificationManager.class);
+    private static void postCompletion(Context ctx) {
+        NotificationManager nm = ctx.getSystemService(NotificationManager.class);
         if (nm == null) return;
-        AudioManager am = getSystemService(AudioManager.class);
+        AudioManager am = ctx.getSystemService(AudioManager.class);
         int mode = am != null ? am.getRingerMode() : AudioManager.RINGER_MODE_NORMAL;
 
         boolean ring = mode == AudioManager.RINGER_MODE_NORMAL;
         if (!ring && mode != AudioManager.RINGER_MODE_SILENT) {
-            Haptics.buzz(this, Haptics.END);
+            Haptics.buzz(ctx, Haptics.END);
         }
 
-        Intent open = new Intent(this, MainActivity.class)
+        Intent open = new Intent(ctx, MainActivity.class)
                 .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
         PendingIntent openPi = PendingIntent.getActivity(
-                this, 0, open, PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
+                ctx, 0, open, PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
 
-        Notification n = new NotificationCompat.Builder(this,
+        Notification n = new NotificationCompat.Builder(ctx,
                 ring ? Notify.CH_MEDITATION_DONE : Notify.CH_MEDITATION)
                 .setSmallIcon(R.drawable.ic_stat_bell)
                 .setContentTitle("Practice complete")
-                .setContentText(Lessons.today(this).idea())
+                .setContentText(Lessons.today(ctx).idea())
                 .setCategory(NotificationCompat.CATEGORY_ALARM)
                 .setAutoCancel(true)
                 .setTimeoutAfter(10_000L)   // clears itself after ten seconds
@@ -269,7 +277,7 @@ public class MeditationService extends Service {
     }
 
     private void finish() {
-        restoreDnd();
+        restoreDnd(this);
         getSharedPreferences(OnboardingActivity.PREFS, MODE_PRIVATE)
                 .edit().remove(KEY_MEDITATION_END_AT).apply();
         stopForeground(STOP_FOREGROUND_REMOVE);
@@ -291,13 +299,11 @@ public class MeditationService extends Service {
         PendingIntent operation = endAlarmPendingIntent();
 
         // setAlarmClock is the strongest "this must fire" alarm Android offers:
-        // exact even in Doze, no exact-alarm permission needed, and — crucially —
-        // firing one grants a temporary allowance to start a foreground service
-        // from the background. That last part is what lets handleEnd sound the
-        // closing bell with the screen locked; a plain exact alarm's exemption is
-        // weaker and some phones drop the background service start, so the end
-        // bell would silently not ring. It does surface a small alarm indicator
-        // while the sitting is pending, which is a fair trade for reliability.
+        // exact even in Doze, and no exact-alarm permission needed. That is what
+        // guarantees EndBellReceiver actually runs at the end minute with the
+        // screen locked, so it can sound the closing bell. It surfaces a small
+        // alarm indicator while the sitting is pending — a fair trade for the
+        // bell reliably ringing.
         Intent open = new Intent(this, MainActivity.class)
                 .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
         PendingIntent showPi = PendingIntent.getActivity(
@@ -367,17 +373,6 @@ public class MeditationService extends Service {
                 .setContentIntent(openPi)
                 .addAction(R.drawable.ic_stat_bell, "Stop", stopPi)
                 .setForegroundServiceBehavior(NotificationCompat.FOREGROUND_SERVICE_IMMEDIATE)
-                .build();
-    }
-
-    private Notification buildCompleting() {
-        return new NotificationCompat.Builder(this, Notify.CH_MEDITATION)
-                .setSmallIcon(R.drawable.ic_stat_bell)
-                .setContentTitle("Practice complete")
-                .setContentText(Lessons.today(this).idea())
-                .setOngoing(false)
-                .setOnlyAlertOnce(true)
-                .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
                 .build();
     }
 
