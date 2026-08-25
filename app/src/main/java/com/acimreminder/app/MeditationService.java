@@ -8,9 +8,7 @@ import android.app.Service;
 import android.content.Context;
 import android.content.Intent;
 import android.content.pm.ServiceInfo;
-import android.media.AudioAttributes;
 import android.media.AudioManager;
-import android.net.Uri;
 import android.os.IBinder;
 import android.os.SystemClock;
 import android.util.Log;
@@ -210,7 +208,11 @@ public class MeditationService extends Service {
         PendingIntent openPi = PendingIntent.getActivity(
                 ctx, 0, open, PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
 
-        NotificationCompat.Builder builder = new NotificationCompat.Builder(ctx,
+        // The sound comes from the notification CHANNEL (set in Notify.ensureChannels),
+        // not the builder — on Android O+ (our minSdk 33 always qualifies) the channel's
+        // sound is authoritative and NotificationCompat.Builder has no Uri+AudioAttributes
+        // overload to set one here anyway.
+        Notification n = new NotificationCompat.Builder(ctx,
                 ring ? Notify.CH_MEDITATION_DONE : Notify.CH_MEDITATION)
                 .setSmallIcon(R.drawable.ic_stat_bell)
                 .setContentTitle("Practice complete")
@@ -219,17 +221,8 @@ public class MeditationService extends Service {
                 .setAutoCancel(true)
                 .setTimeoutAfter(10_000L)   // clears itself after ten seconds
                 .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
-                .setContentIntent(openPi);
-
-        if (ring) {
-            Uri bell = Uri.parse("android.resource://" + ctx.getPackageName() + "/" + R.raw.bell_end);
-            builder.setSound(bell, new AudioAttributes.Builder()
-                    .setUsage(AudioAttributes.USAGE_ALARM)
-                    .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
-                    .build());
-        }
-
-        Notification n = builder.build();
+                .setContentIntent(openPi)
+                .build();
         nm.notify(MED_DONE_NOTIF_ID, n);
     }
 
