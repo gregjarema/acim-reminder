@@ -102,6 +102,7 @@ public class ReminderReceiver extends BroadcastReceiver {
                 .setCategory(NotificationCompat.CATEGORY_REMINDER)
                 .setPriority(NotificationCompat.PRIORITY_HIGH)
                 .setAutoCancel(true)
+                .setTimeoutAfter(60_000L)
                 .setContentIntent(openPi);
 
         // Say which of the day's two tracks this is. A lesson asking for

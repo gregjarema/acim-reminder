@@ -42,6 +42,8 @@ public final class Notify {
         // Remove the old low-importance meditation channel; its countdown was
         // filed under "silent" and therefore hidden on the lock screen.
         nm.deleteNotificationChannel("meditation");
+        // Remove old meditation_done channel so new one is created with proper sound settings
+        nm.deleteNotificationChannel("meditation_done");
 
         NotificationChannel reminders = new NotificationChannel(
                 CH_REMINDERS, "Practice reminders", NotificationManager.IMPORTANCE_HIGH);
