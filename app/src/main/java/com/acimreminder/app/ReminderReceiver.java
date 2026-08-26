@@ -65,11 +65,14 @@ public class ReminderReceiver extends BroadcastReceiver {
             headline = minute == 30 ? lesson.halfThought() : lesson.hourThought();
             rest = "";
         } else {
-            // The heading is the lesson's own idea; the verse to hold during
-            // practice goes beneath it. Conflating the two put the practice text
-            // where the lesson's title belongs.
+            // The heading is the lesson's own idea; the verse to hold beneath it
+            // depends on which track this is. The workbook often gives two
+            // separate verses — a fuller one to open the timed sitting with, a
+            // shorter one to carry through the day's passing remembrances — so a
+            // sitting reminder shows meditationText and an hourly one shows
+            // remembranceText, rather than always conflating the two.
             headline = lesson.idea();
-            rest = lesson.meditationText();
+            rest = sitting ? lesson.meditationText() : lesson.remembranceText();
             // A lesson with no separate verse falls back to its idea — don't print
             // the same line twice. Compare ignoring the line breaks a verse adds.
             if (rest.replace("\n", " ").equals(headline)) rest = "";

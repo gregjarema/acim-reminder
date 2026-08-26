@@ -48,6 +48,15 @@ public final class Lesson {
     public final int remembranceEveryMinutes;
     /** The lines to hold during practice — the reminder's subtext. */
     public final String meditationText;
+    /**
+     * The shorter verse meant for the <em>hourly</em> remembrance, when the
+     * lesson gives one separately from {@link #meditationText}. The workbook
+     * often gives two: a fuller form to open the timed sitting with, and a
+     * second, usually briefer, restatement to carry through the day — see
+     * {@link #remembranceText()}. Empty on most lessons, which give only the
+     * one verse for both.
+     */
+    public final String remembranceText;
 
     /**
      * A review day (Review III, Lessons 111-120) reviews two lessons at once and
@@ -64,7 +73,7 @@ public final class Lesson {
                   String video, String body,
                   int practiceMinutes, String practiceKind, int practiceValue,
                   boolean hourlyRemembrance, int remembranceEveryMinutes,
-                  String meditationText,
+                  String meditationText, String remembranceText,
                   String hourIdea, String halfIdea) {
         this.number = number;
         this.title = title;
@@ -80,6 +89,7 @@ public final class Lesson {
         // hourly cadence.
         this.remembranceEveryMinutes = remembranceEveryMinutes <= 0 ? 60 : remembranceEveryMinutes;
         this.meditationText = meditationText;
+        this.remembranceText = remembranceText == null ? "" : remembranceText;
         this.hourIdea = hourIdea == null ? "" : hourIdea;
         this.halfIdea = halfIdea == null ? "" : halfIdea;
     }
@@ -199,6 +209,19 @@ public final class Lesson {
                 ? meditationText
                 : (meditation != null && !meditation.isEmpty() ? meditation : phrase);
         return flowThought(tidy(s));
+    }
+
+    /**
+     * The (usually shorter) verse for the <em>hourly</em> remembrance, falling
+     * back to {@link #meditationText()} when the lesson gives no separate
+     * one. The workbook commonly opens the timed sitting with a fuller form
+     * of the idea and later gives a briefer restatement to carry through the
+     * day between sittings — this is that second one, when {@link
+     * #remembranceText} confidently identifies it.
+     */
+    public String remembranceText() {
+        if (remembranceText == null || remembranceText.isEmpty()) return meditationText();
+        return flowThought(tidy(remembranceText));
     }
 
     /**

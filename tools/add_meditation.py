@@ -35,9 +35,14 @@ def main():
         m = med.extract_meditation(l.get("body", ""), l.get("phrase", ""))
         if m:
             count += 1
-        # Rebuild each record so `meditation` sits just after `phrase`.
+        # Rebuild each record so `meditation` sits just after `phrase`. Skip
+        # any existing `meditation` key while copying the rest — otherwise,
+        # on a refresh (not just a first add), the old value reasserts itself
+        # a few keys later in this same loop and silently overwrites `m`.
         out = {}
         for k, v in l.items():
+            if k == "meditation":
+                continue
             out[k] = v
             if k == "phrase":
                 out["meditation"] = m

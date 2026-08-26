@@ -28,12 +28,24 @@ Usage:
 from __future__ import annotations
 
 import argparse
+import importlib.util
 import json
 import re
 from pathlib import Path
 
 REPO = Path(__file__).resolve().parent.parent
 LESSONS = REPO / "app" / "src" / "main" / "assets" / "lessons.json"
+
+
+def _load_meditation_module():
+    spec = importlib.util.spec_from_file_location(
+        "med", Path(__file__).resolve().parent / "meditation.py")
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    return mod
+
+
+med = _load_meditation_module()
 
 WORDS = {
     "half": 0.5, "one": 1, "a": 1, "an": 1, "two": 2, "three": 3, "four": 4,
@@ -306,6 +318,9 @@ def main() -> int:
             # Both thoughts, so the sitting and the meditation notification hold
             # the pair the day is reviewing.
             l["meditationText"] = l["hourIdea"] + "\n" + l["halfIdea"]
+            # The hour/half-hour split already covers the hourly track; there's
+            # no separate remembrance verse to add on top of it.
+            l["remembranceText"] = ""
             continue
 
         d = find_duration(text)
@@ -351,12 +366,22 @@ def main() -> int:
         l["practiceStated"] = bool(d or f)
         l["practiceSource"] = " ".join(s for s in (dur_src, freq_src, rem_src) if s).strip()
         l["meditationText"] = meditation_lines(l)
+        # The shorter verse — when the lesson gives one — meant for the hourly
+        # remembrance rather than the timed sitting. See tools/meditation.py:
+        # the FIRST cued verse in the body is the sitting's; this is the LAST
+        # distinct one. Most lessons don't give a separate hourly verse at
+        # all, in which case this stays "" and the app falls back to
+        # meditationText for both.
+        l["remembranceText"] = med.extract_remembrance(
+            l.get("body") or "", l.get("phrase") or "", l["meditationText"])
 
     from collections import Counter
     print(f"lessons: {len(lessons)}")
     print(f"  duration stated outright:  {stated_dur}  (rest inherit the previous lesson)")
     print(f"  frequency stated outright: {stated_freq}")
     print(f"  hourly remembrance stated: {stated_rem}")
+    print(f"  with a separate hourly remembrance verse: "
+          f"{sum(1 for l in lessons if l['remembranceText'])}")
     print("  resulting duration spread:", dict(Counter(l["practiceMinutes"] for l in lessons).most_common()))
     print("  resulting sitting spread:",
           dict(Counter(f'{l["practiceKind"]}:{l["practiceValue"]}' for l in lessons).most_common(8)))
