@@ -176,8 +176,14 @@ public class MeditationService extends Service {
      */
     static void endNow(Context ctx) {
         Notify.ensureChannels(ctx);
-        postCompletion(ctx);
+        // Put Do Not Disturb back BEFORE sounding the closing cue: our
+        // notification channel is never granted the separate system
+        // permission to interrupt Do Not Disturb (that's a per-app toggle
+        // only the user can grant, off by default), so posting the cue while
+        // a "Silence with Do Not Disturb" sitting is still in ALARMS_ONLY
+        // mode was silently swallowing both the bell and the vibration.
         restoreDnd(ctx);
+        postCompletion(ctx);
         ctx.getSharedPreferences(OnboardingActivity.PREFS, Context.MODE_PRIVATE)
                 .edit().remove(KEY_MEDITATION_END_AT).apply();
         NotificationManager nm = ctx.getSystemService(NotificationManager.class);
