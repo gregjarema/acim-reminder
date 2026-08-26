@@ -199,6 +199,18 @@ public class MeditationService extends Service {
         int mode = am != null ? am.getRingerMode() : AudioManager.RINGER_MODE_NORMAL;
 
         boolean ring = mode == AudioManager.RINGER_MODE_NORMAL;
+        Log.i(TAG, "postCompletion: ringerMode=" + mode + " ring=" + ring);
+        android.app.NotificationChannel ch = nm.getNotificationChannel(
+                ring ? Notify.CH_MEDITATION_DONE : Notify.CH_MEDITATION);
+        if (ch != null) {
+            Log.i(TAG, "channel " + ch.getId() + ": importance=" + ch.getImportance()
+                    + " sound=" + ch.getSound() + " vibration=" + ch.shouldVibrate()
+                    + " canBypassDnd=" + ch.canBypassDnd());
+        } else {
+            Log.w(TAG, "channel is null!");
+        }
+        Log.i(TAG, "areNotificationsEnabled=" + nm.areNotificationsEnabled()
+                + " currentInterruptionFilter=" + nm.getCurrentInterruptionFilter());
         if (!ring && mode != AudioManager.RINGER_MODE_SILENT) {
             Haptics.buzz(ctx, Haptics.END);
         }

@@ -31,6 +31,7 @@ public final class BellPlayer {
      * sound finishes or if it fails to start, so callers can chain cleanup.
      */
     public static void play(Context ctx, int rawResId, final OnDone onDone) {
+        Log.i(TAG, "play() called, rawResId=" + rawResId);
         MediaPlayer mp = new MediaPlayer();
         mp.setAudioAttributes(new AudioAttributes.Builder()
                 .setUsage(AudioAttributes.USAGE_ALARM)
@@ -40,6 +41,7 @@ public final class BellPlayer {
         mp.setWakeMode(ctx, PowerManager.PARTIAL_WAKE_LOCK);
 
         mp.setOnCompletionListener(m -> {
+            Log.i(TAG, "onCompletion");
             m.release();
             if (onDone != null) onDone.done();
         });
@@ -52,7 +54,12 @@ public final class BellPlayer {
 
         try (AssetFileDescriptor afd = ctx.getResources().openRawResourceFd(rawResId)) {
             mp.setDataSource(afd.getFileDescriptor(), afd.getStartOffset(), afd.getLength());
-            mp.setOnPreparedListener(MediaPlayer::start);
+            mp.setOnPreparedListener(m -> {
+                Log.i(TAG, "onPrepared; calling start()");
+                m.start();
+                Log.i(TAG, "start() returned; isPlaying=" + m.isPlaying());
+            });
+            Log.i(TAG, "calling prepareAsync()");
             mp.prepareAsync();
         } catch (Exception e) {
             Log.e(TAG, "Failed to play bell", e);

@@ -4,6 +4,7 @@ import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.media.AudioManager;
+import android.util.Log;
 
 /**
  * Fired by an exact alarm at the precise end-of-meditation minute. We schedule
@@ -27,15 +28,28 @@ import android.media.AudioManager;
  */
 public class EndBellReceiver extends BroadcastReceiver {
 
+    private static final String TAG = "EndBellReceiver";
+
     @Override
     public void onReceive(Context ctx, Intent intent) {
+        Log.i(TAG, "onReceive: firing");
         MeditationService.endNow(ctx);
 
         AudioManager am = ctx.getSystemService(AudioManager.class);
         int mode = am != null ? am.getRingerMode() : AudioManager.RINGER_MODE_NORMAL;
-        if (mode != AudioManager.RINGER_MODE_NORMAL) return;
+        Log.i(TAG, "ringer mode = " + mode + " (NORMAL=" + AudioManager.RINGER_MODE_NORMAL
+                + " VIBRATE=" + AudioManager.RINGER_MODE_VIBRATE
+                + " SILENT=" + AudioManager.RINGER_MODE_SILENT + ")");
+        if (mode != AudioManager.RINGER_MODE_NORMAL) {
+            Log.i(TAG, "not Normal ringer mode; skipping direct bell playback");
+            return;
+        }
 
         final PendingResult pending = goAsync();
-        BellPlayer.play(ctx, R.raw.bell_end, pending::finish);
+        Log.i(TAG, "goAsync() acquired; starting BellPlayer");
+        BellPlayer.play(ctx, R.raw.bell_end, () -> {
+            Log.i(TAG, "BellPlayer onDone; finishing goAsync");
+            pending.finish();
+        });
     }
 }
