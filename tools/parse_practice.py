@@ -47,6 +47,75 @@ def _load_meditation_module():
 
 med = _load_meditation_module()
 
+# Hand-verified corrections for lessons whose wording defeats the heuristic
+# parser below — confirmed by reading the lesson's own text, not derived from
+# it. Applied last, after the heuristic pass, so a future re-run of this
+# script (e.g. to pick up a new field elsewhere) can never silently revert
+# them back to the heuristic's guess. Keys are whichever of practiceMinutes /
+# practiceKind / practiceValue / hourlyRemembrance / remembranceEveryMinutes
+# the correction touches; anything not listed keeps the heuristic's value.
+OVERRIDES: dict[int, dict] = {
+    # "four five-minute periods" — the parser read the "at least a minute"
+    # aside instead.
+    47: {"practiceMinutes": 5, "practiceKind": "count", "practiceValue": 4},
+    # "four five-minute periods"; practiced "whenever you can" per the text,
+    # not on an hourly schedule — count, not hourly, and no reminders.
+    49: {"practiceMinutes": 5, "practiceKind": "count", "practiceValue": 4,
+         "hourlyRemembrance": False},
+    # "three ten-minute periods", "five or six times an hour" for the
+    # remembrance in between.
+    91: {"practiceMinutes": 10, "practiceKind": "count", "practiceValue": 3,
+         "hourlyRemembrance": True, "remembranceEveryMinutes": 10},
+    # "five minutes... as often during the day as possible" — hourly, not
+    # the parser's 1-minute guess.
+    107: {"practiceMinutes": 5, "practiceKind": "hourly", "practiceValue": 1,
+          "hourlyRemembrance": False},
+    # "a quarter of an hour... morning and evening", remembrances "at least a
+    # minute as each quarter of an hour passes by".
+    122: {"practiceMinutes": 15, "practiceKind": "count", "practiceValue": 2,
+          "hourlyRemembrance": True, "remembranceEveryMinutes": 15},
+    # "devote a half an hour" — a single extended period, not two 15s, plus
+    # the hourly "Let me remember I am one with God" remembrance.
+    124: {"practiceMinutes": 30, "practiceKind": "count", "practiceValue": 1,
+          "hourlyRemembrance": True},
+    # "Three times today... give ten minutes", plus an hourly remembrance.
+    125: {"practiceMinutes": 10, "practiceKind": "count", "practiceValue": 3,
+          "hourlyRemembrance": True},
+    # "ten minutes, three times" plus an hourly remembrance.
+    128: {"practiceMinutes": 10, "practiceKind": "count", "practiceValue": 3,
+          "hourlyRemembrance": True},
+    # "Three times today, at times most suitable for silence, give ten
+    # minutes" plus the hourly "be still a moment" remembrance.
+    129: {"practiceMinutes": 10, "practiceKind": "count", "practiceValue": 3,
+          "hourlyRemembrance": True},
+    # "six times, five minutes" plus an hourly remembrance.
+    130: {"practiceMinutes": 5, "practiceKind": "count", "practiceValue": 6,
+          "hourlyRemembrance": True},
+    # "ten minutes, three times" plus an hourly remembrance.
+    131: {"practiceMinutes": 10, "practiceKind": "count", "practiceValue": 3,
+          "hourlyRemembrance": True},
+    # "fifteen-minute periods, twice" plus an hourly remembrance.
+    132: {"practiceMinutes": 15, "practiceKind": "count", "practiceValue": 2,
+          "hourlyRemembrance": True},
+    # "give ten minutes to these thoughts... which we will conclude today at
+    # night as well" — ten minutes, morning and night — plus "as every hour
+    # of the day slips by" for the remembrance. The parser instead read the
+    # rhetorical "Is not a minute of the hour worth the giving..." as a
+    # literal one-minute-hourly instruction. Its two verses each run four
+    # <i> runs long (one line short of the sitting's — the italic-harvest
+    # fallback's 3-line cap was cutting the first mid-clause), so the exact
+    # text is worth stating outright rather than trusting either extractor:
+    137: {"practiceMinutes": 10, "practiceKind": "count", "practiceValue": 2,
+          "hourlyRemembrance": True,
+          "meditationText": "When I am healed I am not healed alone.\n"
+                             "And I would share my healing with the world,\n"
+                             "that sickness may be banished from the mind of\n"
+                             "God's one Son, Who is my only Self.",
+          "remembranceText": "When I am healed I am not healed alone.\n"
+                              "And I would bless my brothers, for I would\n"
+                              "be healed with them, as they are healed with me."},
+}
+
 WORDS = {
     "half": 0.5, "one": 1, "a": 1, "an": 1, "two": 2, "three": 3, "four": 4,
     "five": 5, "six": 6, "seven": 7, "eight": 8, "nine": 9, "ten": 10,
@@ -277,7 +346,15 @@ def meditation_lines(lesson: dict) -> str:
         # Skip stray one-word emphasis; we want verses, not italicised nouns.
         if len(t.split()) >= 4 and t not in lines:
             lines.append(t)
-    return "\n".join(lines[:3]) if lines else (lesson.get("phrase") or "")
+    lines = lines[:3]
+    # A verse can run past this three-line cap (Lesson 137's, for one, is
+    # four <i> runs long) — better to show the complete sentence(s) that fit
+    # than cut one off mid-clause ("...that sickness may be banished from the
+    # mind of"). Drop a trailing fragment that doesn't finish a thought,
+    # same as the cued-verse extractor in meditation.py does.
+    while lines and not lines[-1].rstrip().endswith(('.', '!', '?')):
+        lines.pop()
+    return "\n".join(lines) if lines else (lesson.get("phrase") or "")
 
 
 def main() -> int:
@@ -321,6 +398,8 @@ def main() -> int:
             # The hour/half-hour split already covers the hourly track; there's
             # no separate remembrance verse to add on top of it.
             l["remembranceText"] = ""
+            if l["number"] in OVERRIDES:
+                l.update(OVERRIDES[l["number"]])
             continue
 
         d = find_duration(text)
@@ -374,6 +453,9 @@ def main() -> int:
         # meditationText for both.
         l["remembranceText"] = med.extract_remembrance(
             l.get("body") or "", l.get("phrase") or "", l["meditationText"])
+
+        if l["number"] in OVERRIDES:
+            l.update(OVERRIDES[l["number"]])
 
     from collections import Counter
     print(f"lessons: {len(lessons)}")
