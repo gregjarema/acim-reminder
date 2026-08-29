@@ -114,6 +114,13 @@ OVERRIDES: dict[int, dict] = {
           "remembranceText": "When I am healed I am not healed alone.\n"
                               "And I would bless my brothers, for I would\n"
                               "be healed with them, as they are healed with me."},
+    # "spend five minutes" on waking and "the last five minutes of our
+    # waking day" before sleep, plus "as every hour passed, we have declared
+    # our choice again" in between. The parser read the "each hour in
+    # between" as the practice itself (hourly, no separate remembrance)
+    # rather than a second track alongside the two 5-minute sittings.
+    138: {"practiceMinutes": 5, "practiceKind": "count", "practiceValue": 2,
+          "hourlyRemembrance": True},
 }
 
 WORDS = {
