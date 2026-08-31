@@ -335,6 +335,43 @@ def extract_review(body: str) -> tuple[str, str] | None:
     return hour, half
 
 
+# --- Review IV, Lessons 141-150 --------------------------------------------
+#
+# A different review format from Review III's. Each day carries a shared
+# central theme — stated only once, in Lesson 141's own introduction, not
+# repeated in 142-150's bodies — held during two 5-minute sittings (morning
+# and evening), plus two numbered daily ideas that alternate through the
+# hourly remembrances between:
+#
+#   "Begin each day with time devoted to the preparation of your mind...
+#    let this thought alone engage it... My mind holds only what I think
+#    with God. Five minutes with this thought will be enough..."
+#   "...merely read each of the two ideas assigned to you to be reviewed
+#    that day... Each hour of the day, bring to your mind the thought with
+#    which the day began, and spend a quiet moment with it. Then repeat the
+#    two ideas you practice for the day..."
+#
+# So: meditationText is the constant central theme (the timed sitting);
+# hourIdea/halfIdea are that day's own two numbered ideas, which alternate
+# in the hourly remembrances the same way Review III's do.
+REVIEW_IV_LESSONS = range(141, 151)
+REVIEW_IV_THEME = "My mind holds only what I think with God."
+NUMBERED_IDEA_RE = re.compile(r"\((\d+)\)\s*<i>(.*?)</i>", re.S)
+
+
+def extract_review_iv(body: str) -> tuple[str, str] | None:
+    """That day's (first, second) numbered idea for a Review IV lesson, or
+    None if the body doesn't have the expected pair."""
+    ideas = NUMBERED_IDEA_RE.findall(body or "")
+    if len(ideas) < 2:
+        return None
+    first = strip_tags(ideas[0][1]).strip()
+    second = strip_tags(ideas[1][1]).strip()
+    if not first or not second:
+        return None
+    return first, second
+
+
 def meditation_lines(lesson: dict) -> str:
     """
     The lines to hold during practice — the notification's subtext.
@@ -378,6 +415,7 @@ def main() -> int:
     stated_dur = stated_freq = stated_rem = 0
 
     review_days = 0
+    review_iv_days = 0
     for l in lessons:
         text = strip_tags(l.get("body") or "")
 
@@ -408,6 +446,30 @@ def main() -> int:
             if l["number"] in OVERRIDES:
                 l.update(OVERRIDES[l["number"]])
             continue
+
+        if l["number"] in REVIEW_IV_LESSONS:
+            review_iv = extract_review_iv(l.get("body") or "")
+            if review_iv:
+                review_iv_days += 1
+                l["hourIdea"], l["halfIdea"] = review_iv
+                l["practiceMinutes"] = 5
+                l["practiceKind"] = "count"        # a sitting morning and evening
+                l["practiceValue"] = 2
+                l["hourlyRemembrance"] = True       # plus the two ideas alternating hourly
+                l["durationStated"] = True
+                l["frequencyStated"] = True
+                l["practiceStated"] = True
+                l["practiceSource"] = ("Review IV: five minutes twice a day on the shared "
+                                       "central theme; the day's two numbered ideas "
+                                       "alternate in the hourly remembrances.")
+                # The sitting holds the constant central theme, not today's two
+                # ideas — those alternate in the hourly reminders instead (see
+                # ReminderReceiver, which reads hourIdea/halfIdea for a review day).
+                l["meditationText"] = REVIEW_IV_THEME
+                l["remembranceText"] = ""
+                if l["number"] in OVERRIDES:
+                    l.update(OVERRIDES[l["number"]])
+                continue
 
         d = find_duration(text)
         if d:
@@ -477,6 +539,7 @@ def main() -> int:
     print(f"  also nudged hourly:        {sum(1 for l in lessons if l['hourlyRemembrance'])}")
     print(f"  with meditation text:      {sum(1 for l in lessons if l['meditationText'])}")
     print(f"  review days (hour/half):   {review_days}")
+    print(f"  review IV days (141-150):  {review_iv_days}")
 
     if args.report:
         for l in lessons:
