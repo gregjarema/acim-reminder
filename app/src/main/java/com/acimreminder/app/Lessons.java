@@ -100,7 +100,8 @@ public final class Lessons {
                         o.optString("meditationText", ""),
                         o.optString("remembranceText", ""),
                         o.optString("hourIdea", ""),
-                        o.optString("halfIdea", "")));
+                        o.optString("halfIdea", ""),
+                        o.optString("reviewTheme", "")));
             }
         } catch (Exception e) {
             // Never crash over content; an empty list is handled by callers.
@@ -119,7 +120,7 @@ public final class Lessons {
         List<Lesson> all = all(ctx);
         if (all.isEmpty()) {
             return new Lesson(DAY_ONE_NUMBER, "Lesson " + DAY_ONE_NUMBER, "", "", "", "",
-                    5, Lesson.KIND_HOURLY, 1, false, 60, "", "", "", "");
+                    5, Lesson.KIND_HOURLY, 1, false, 60, "", "", "", "", "");
         }
         int size = all.size();
 

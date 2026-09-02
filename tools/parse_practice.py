@@ -426,6 +426,12 @@ def main() -> int:
         review = extract_review(l.get("body") or "")
         l["hourIdea"] = review[0] if review else ""
         l["halfIdea"] = review[1] if review else ""
+        # Set only for Review IV (141-150) below: the constant theme held
+        # during the sitting, shown as the day's heading (wallpaper, main
+        # title) in place of stacking the two alternating hourly ideas —
+        # unlike Review III, where those two thoughts ARE the whole practice
+        # and belong in the heading.
+        l["reviewTheme"] = ""
         if review:
             review_days += 1
             l["practiceMinutes"] = 5
@@ -467,6 +473,9 @@ def main() -> int:
                 # ReminderReceiver, which reads hourIdea/halfIdea for a review day).
                 l["meditationText"] = REVIEW_IV_THEME
                 l["remembranceText"] = ""
+                # Drives idea() to show the constant theme as the day's heading
+                # instead of stacking the two alternating ideas.
+                l["reviewTheme"] = REVIEW_IV_THEME
                 if l["number"] in OVERRIDES:
                     l.update(OVERRIDES[l["number"]])
                 continue

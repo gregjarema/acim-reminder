@@ -68,13 +68,22 @@ public final class Lesson {
      */
     public final String hourIdea;
     public final String halfIdea;
+    /**
+     * The constant theme held during the timed sitting on a Review IV day
+     * (Lessons 141-150), shared by all ten days of that review — unlike
+     * Review III, where {@link #hourIdea}/{@link #halfIdea} are themselves
+     * the whole practice. Empty everywhere else, including Review III, where
+     * {@link #idea()} shows the two alternating thoughts as the heading
+     * instead of a separate theme.
+     */
+    public final String reviewTheme;
 
     public Lesson(int number, String title, String phrase, String meditation,
                   String video, String body,
                   int practiceMinutes, String practiceKind, int practiceValue,
                   boolean hourlyRemembrance, int remembranceEveryMinutes,
                   String meditationText, String remembranceText,
-                  String hourIdea, String halfIdea) {
+                  String hourIdea, String halfIdea, String reviewTheme) {
         this.number = number;
         this.title = title;
         this.phrase = phrase;
@@ -92,6 +101,7 @@ public final class Lesson {
         this.remembranceText = remembranceText == null ? "" : remembranceText;
         this.hourIdea = hourIdea == null ? "" : hourIdea;
         this.halfIdea = halfIdea == null ? "" : halfIdea;
+        this.reviewTheme = reviewTheme == null ? "" : reviewTheme;
     }
 
     /** True on a Review III day, which carries two alternating thoughts. */
@@ -145,6 +155,12 @@ public final class Lesson {
      * own title.
      */
     public String idea() {
+        // A Review IV day (141-150) holds a single constant theme through the
+        // sitting, shared by all ten days — that's the heading, not the two
+        // ideas that alternate hour to hour beneath it.
+        if (isReview() && !reviewTheme.isEmpty()) {
+            return tidy(reviewTheme);
+        }
         // A Review III day has no single idea of its own — its "phrase" is only
         // the instruction "For morning and evening review:". It reviews two
         // lessons, so BOTH thoughts are its heading: the one used on the hour and
