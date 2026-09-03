@@ -108,13 +108,11 @@ public class ReminderReceiver extends BroadcastReceiver {
                 .setTimeoutAfter(60_000L)
                 .setContentIntent(openPi);
 
-        // Say which of the day's two tracks this is. A lesson asking for
-        // fifteen minutes morning and evening plus hourly remembrances sends
-        // both kinds, and they ask very different things of you.
+        // Say which of the day's two tracks this is, on a sitting only — a
+        // passing remembrance skips this: "A moment's remembrance" ate into
+        // the limited space the reflection text has to show in.
         if (lesson.hasTimedPractice() && sitting) {
             b.setSubText(lesson.practiceMinutes + " min practice");
-        } else if (lesson.hourlyRemembrance && !sitting) {
-            b.setSubText("A moment's remembrance");
         }
 
         // "Begin" belongs on a sitting. On a passing remembrance, or a lesson
