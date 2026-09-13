@@ -1,5 +1,6 @@
 package com.acimreminder.app;
 
+import java.util.TreeSet;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -141,6 +142,52 @@ public final class Lesson {
     /** "15-minute practice" / "5-minute practice" — for the Begin button. */
     public String practiceLabel() {
         return practiceMinutes + "-minute";
+    }
+
+    /**
+     * The lesson at which the workbook stops fixing how long to sit and hands
+     * the length back to you — Lesson 153, which sets the form "we will
+     * maintain for quite a while":
+     *
+     *   "Five minutes now becomes the least we give to preparation for a day in
+     *    which salvation is the only goal we have. Ten would be better; fifteen
+     *    better still."
+     *
+     * From here on the app offers those three lengths side by side instead of
+     * one, so the sitting can be as long as the day actually allows.
+     */
+    public static final int OPEN_PRACTICE_FROM = 153;
+
+    /** The three lengths Lesson 153 itself names, shortest first. */
+    private static final int[] OPEN_PRACTICE_LENGTHS = {5, 10, 15};
+
+    /** True when today offers a choice of sitting length rather than just one. */
+    public boolean hasPracticeChoice() {
+        return number >= OPEN_PRACTICE_FROM && hasTimedPractice();
+    }
+
+    /**
+     * The lengths to offer today, in minutes, shortest first: Lesson 153's own
+     * 5/10/15, plus this lesson's own prescription when it asks for something
+     * outside them. A later lesson that specifies its own sitting — Lesson
+     * 201's "should not be less than fifteen minutes" — keeps that length on
+     * the row (see {@link #practiceMinutes}, which {@code isPrescribed} marks),
+     * rather than losing it to the general form. Every lesson from 153 on asks
+     * for five or fifteen, so in practice this is the three Lesson 153 names.
+     */
+    public int[] practiceChoices() {
+        TreeSet<Integer> lengths = new TreeSet<>();
+        for (int m : OPEN_PRACTICE_LENGTHS) lengths.add(m);
+        if (practiceMinutes > 0) lengths.add(practiceMinutes);
+        int[] out = new int[lengths.size()];
+        int i = 0;
+        for (int m : lengths) out[i++] = m;
+        return out;
+    }
+
+    /** True when {@code minutes} is the length today's lesson actually asks for. */
+    public boolean isPrescribed(int minutes) {
+        return minutes == practiceMinutes;
     }
 
     /**

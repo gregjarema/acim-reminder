@@ -260,6 +260,21 @@
                         android:textAllCaps="false"
                         android:textSize="17sp" />
 
+                    <!-- From Lesson 153 the workbook stops fixing how long to
+                         sit — "Five minutes now becomes the least we give...
+                         Ten would be better; fifteen better still" — so the one
+                         Begin button gives way to a row of lengths, filled in by
+                         MainActivity.buildPracticeChoices. Only one of the two
+                         is ever on screen. -->
+                    <LinearLayout
+                        android:id="@+id/practiceChoices"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="20dp"
+                        android:orientation="horizontal"
+                        android:baselineAligned="false"
+                        android:visibility="gone" />
+
                     <!-- Mirrors the same live countdown shown in the notification, so
                          you can see it in whichever place is in front of you. Hidden
                          until Begin is tapped; tap it to stop early. -->

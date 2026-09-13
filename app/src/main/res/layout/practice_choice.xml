@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- One length on the row of sitting lengths under the lesson (5 / 10 / 15).
+     Inflated once per choice by MainActivity.buildPracticeChoices, which sets
+     the label and the gap between them. Deliberately the plain theme Button,
+     exactly like the single Begin button it replaces, so it keeps the same
+     look and follows the phone's light/dark treatment the same way. -->
+<Button xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="0dp"
+    android:layout_height="wrap_content"
+    android:layout_weight="1"
+    android:text="5 min"
+    android:textAllCaps="false"
+    android:textSize="17sp" />

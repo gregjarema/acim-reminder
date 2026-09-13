@@ -17,7 +17,9 @@ import android.widget.RemoteViews;
 import androidx.core.app.NotificationCompat;
 
 /**
- * Runs one 5-minute meditation.
+ * Runs one sitting — as long as the day's lesson asks for, or as long as the
+ * length passed in {@link #EXTRA_MINUTES} where the lesson leaves the choice
+ * to you.
  *
  * Flow:
  *   ACTION_START  -> go foreground with a live countdown notification, sound the
@@ -53,6 +55,22 @@ public class MeditationService extends Service {
     public static long durationFor(Context ctx) {
         Lesson today = Lessons.today(ctx);
         return today.hasTimedPractice() ? today.practiceMillis() : DURATION_MS;
+    }
+
+    /**
+     * Optional minutes on {@link #ACTION_START}: the length the user picked for
+     * this one sitting. From Lesson 153 the workbook stops fixing the length
+     * ("Five minutes now becomes the least we give... Ten would be better;
+     * fifteen better still"), so the app offers a choice — see
+     * {@link Lesson#practiceChoices()}. Absent or 0 means the length the day's
+     * lesson prescribes, via {@link #durationFor(Context)}.
+     */
+    public static final String EXTRA_MINUTES = "minutes";
+
+    /** The length this start asks for: the chosen one, or today's prescribed. */
+    private long durationFrom(Intent intent) {
+        int minutes = intent != null ? intent.getIntExtra(EXTRA_MINUTES, 0) : 0;
+        return minutes > 0 ? minutes * 60_000L : durationFor(this);
     }
 
     /**
@@ -95,7 +113,7 @@ public class MeditationService extends Service {
         Log.i(TAG, "onStartCommand action=" + action);
 
         if (ACTION_START.equals(action)) {
-            handleStart();
+            handleStart(intent);
         } else if (ACTION_END.equals(action)) {
             // The end is now handled directly by EndBellReceiver (see endNow),
             // which doesn't need this service to be running. Tolerate a stray
@@ -110,10 +128,10 @@ public class MeditationService extends Service {
         return START_NOT_STICKY;
     }
 
-    private void handleStart() {
+    private void handleStart(Intent intent) {
         Notify.ensureChannels(this);
         clearReminders();
-        long endTime = System.currentTimeMillis() + durationFor(this);
+        long endTime = System.currentTimeMillis() + durationFrom(intent);
         getSharedPreferences(OnboardingActivity.PREFS, MODE_PRIVATE)
                 .edit().putLong(KEY_MEDITATION_END_AT, endTime).apply();
 

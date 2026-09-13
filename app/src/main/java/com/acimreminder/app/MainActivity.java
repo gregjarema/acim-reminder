@@ -10,6 +10,7 @@ import android.content.ComponentName;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.graphics.Color;
+import android.graphics.Typeface;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
@@ -24,6 +25,7 @@ import android.text.style.SuperscriptSpan;
 import android.transition.Fade;
 import android.transition.TransitionManager;
 import android.view.ActionMode;
+import android.view.LayoutInflater;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
@@ -160,7 +162,10 @@ public class MainActivity extends Activity implements Playback.Controller {
 
         chronoMeditation = findViewById(R.id.chronoMeditation);
         chronoMeditation.setOnClickListener(v -> stopMeditation());
-        findViewById(R.id.btnBegin).setOnClickListener(v -> beginMeditation());
+        // The length today prescribes. Read at tap time, not now, so a
+        // midnight rollover while the app is open can't start yesterday's.
+        findViewById(R.id.btnBegin).setOnClickListener(
+                v -> beginMeditation(Lessons.today(this).practiceMinutes));
 
         Playback.setController(this);
 
@@ -863,17 +868,7 @@ public class MainActivity extends Activity implements Playback.Controller {
         ((TextView) findViewById(R.id.tvSubtitle)).setText(today.idea());
         ((TextView) findViewById(R.id.tvBody)).setText(asHtml(today.body));
 
-        // The workbook sets the practice, and it changes constantly. Some days
-        // ask only that you remember the idea — on those, there's nothing to
-        // time, so the Begin button goes away rather than inventing a sitting.
-        Button begin = findViewById(R.id.btnBegin);
-        if (today.hasTimedPractice()) {
-            begin.setText("Begin " + today.practiceLabel() + " practice");
-            begin.setVisibility(chronoMeditation.getVisibility() == View.VISIBLE
-                    ? View.GONE : View.VISIBLE);
-        } else {
-            begin.setVisibility(View.GONE);
-        }
+        showPracticeControls(today);
         TextView practice = findViewById(R.id.tvPractice);
         practice.setText(practiceSummary(today));
 
@@ -975,8 +970,14 @@ public class MainActivity extends Activity implements Playback.Controller {
         } else {
             when = "every hour";
         }
+        // From Lesson 153 the prescribed length is a floor, not a fixed period
+        // ("Five minutes now becomes the least we give"; Lesson 201's "should
+        // not be less than fifteen minutes") — which is what the row of lengths
+        // under this line is for, so say so.
+        String howLong = (l.hasPracticeChoice() ? "At least " : "")
+                + l.practiceMinutes + " minutes, ";
         String s = l.hasTimedPractice()
-                ? l.practiceMinutes + " minutes, " + when
+                ? howLong + when
                 : "Just remember the idea — " + when;
         // The second track, where the lesson asks for both.
         if (l.hourlyRemembrance) s += " · plus hourly reminders";
@@ -1323,15 +1324,20 @@ public class MainActivity extends Activity implements Playback.Controller {
 
     // --------------------------------------------------------- meditation
 
-    private void beginMeditation() {
+    /** Sit for {@code minutes}; 0 falls back to whatever today's lesson asks. */
+    private void beginMeditation(int minutes) {
         // The app is visible, so this foreground service starts with full
         // "while-in-use" capability and its audio is allowed to play.
         Intent i = new Intent(this, MeditationService.class)
-                .setAction(MeditationService.ACTION_START);
+                .setAction(MeditationService.ACTION_START)
+                .putExtra(MeditationService.EXTRA_MINUTES, minutes);
         ContextCompat.startForegroundService(this, i);
         // The service persists this same end time; computing it here too (rather
         // than waiting on it) shows the countdown immediately with no lag.
-        showMeditationActive(System.currentTimeMillis() + MeditationService.durationFor(this));
+        long duration = minutes > 0
+                ? minutes * 60_000L
+                : MeditationService.durationFor(this);
+        showMeditationActive(System.currentTimeMillis() + duration);
     }
 
     private void stopMeditation() {
@@ -1357,6 +1363,7 @@ public class MainActivity extends Activity implements Playback.Controller {
             softFade(findViewById(R.id.content));
         }
         findViewById(R.id.btnBegin).setVisibility(View.GONE);
+        findViewById(R.id.practiceChoices).setVisibility(View.GONE);
         chronoMeditation.setVisibility(View.VISIBLE);
         chronoMeditation.setCountDown(true);
         chronoMeditation.setFormat("Meditating — %s remaining · tap to stop");
@@ -1378,9 +1385,72 @@ public class MainActivity extends Activity implements Playback.Controller {
         }
         chronoMeditation.stop();
         chronoMeditation.setVisibility(View.GONE);
-        // Only bring Begin back if today actually has something to time.
-        findViewById(R.id.btnBegin).setVisibility(
-                Lessons.today(this).hasTimedPractice() ? View.VISIBLE : View.GONE);
+        // Only bring the controls back if today actually has something to time.
+        showPracticeControls(Lessons.today(this));
+    }
+
+    /**
+     * Put up whatever today asks for, under the practice line: nothing at all on
+     * a day with no timed sitting; one Begin button while the workbook still
+     * fixes the length; and from Lesson 153, where it stops fixing it and hands
+     * the length back to you ("Five minutes now becomes the least we give... Ten
+     * would be better; fifteen better still"), a row of lengths to choose
+     * between, so the sitting can be as long as the day allows.
+     *
+     * Nothing shows while a sitting is already running — the countdown has the
+     * space then.
+     */
+    private void showPracticeControls(Lesson today) {
+        View begin = findViewById(R.id.btnBegin);
+        ViewGroup choices = findViewById(R.id.practiceChoices);
+        boolean sitting = chronoMeditation.getVisibility() == View.VISIBLE;
+
+        if (!today.hasTimedPractice() || sitting) {
+            begin.setVisibility(View.GONE);
+            choices.setVisibility(View.GONE);
+        } else if (today.hasPracticeChoice()) {
+            begin.setVisibility(View.GONE);
+            buildPracticeChoices(choices, today);
+            choices.setVisibility(View.VISIBLE);
+        } else {
+            choices.setVisibility(View.GONE);
+            ((Button) begin).setText("Begin " + today.practiceLabel() + " practice");
+            begin.setVisibility(View.VISIBLE);
+        }
+    }
+
+    /**
+     * Fill the row with today's lengths. The length the lesson itself asks for
+     * is the bold one — a later lesson that specifies its own sitting (Lesson
+     * 201's "should not be less than fifteen minutes") still says so — while the
+     * others are there for the days you have more or less time than that.
+     *
+     * Rebuilt only when the day changes: bindToday runs on every resume, and
+     * replacing the buttons each time would flicker under the fade.
+     */
+    private void buildPracticeChoices(ViewGroup row, Lesson today) {
+        int[] lengths = today.practiceChoices();
+        Object built = row.getTag();
+        if (built instanceof Integer && (Integer) built == today.number
+                && row.getChildCount() == lengths.length) {
+            return;
+        }
+        row.removeAllViews();
+        LayoutInflater inflater = LayoutInflater.from(this);
+        int gap = Math.round(8 * getResources().getDisplayMetrics().density);
+        for (int i = 0; i < lengths.length; i++) {
+            final int minutes = lengths[i];
+            Button b = (Button) inflater.inflate(R.layout.practice_choice, row, false);
+            b.setText(minutes + " min");
+            b.setTypeface(Typeface.DEFAULT,
+                    today.isPrescribed(minutes) ? Typeface.BOLD : Typeface.NORMAL);
+            b.setContentDescription("Begin " + minutes + "-minute practice"
+                    + (today.isPrescribed(minutes) ? " — what today asks for" : ""));
+            ((LinearLayout.LayoutParams) b.getLayoutParams()).setMarginStart(i == 0 ? 0 : gap);
+            b.setOnClickListener(v -> beginMeditation(minutes));
+            row.addView(b);
+        }
+        row.setTag(today.number);
     }
 
     // -------------------------------------------------------------- shared

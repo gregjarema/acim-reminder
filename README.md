@@ -3,7 +3,8 @@
 A small, personal Android app for practising *A Course in Miracles*, in two tabs:
 
 - **Workbook** — reminds you to pause and practice the day's workbook lesson,
-  and runs a gentle 5-minute meditation with a soft bell at the start and end.
+  and runs a gentle timed sitting — as long as that lesson asks for — with a
+  soft bell at the start and end.
 - **Text** — Marianne Williamson's daily Text sessions, read at your own pace.
 
 Both tabs play Marianne's video right in the app, and text everywhere is
@@ -227,10 +228,19 @@ happens whenever more Text days are transcribed.
   away, without opening the app.
 - **Tap the notification itself:** opens the app to the full lesson, with a
   **Begin** button there too.
+- **Choose how long, from Lesson 153 on:** that lesson stops fixing the length
+  and hands it back to you — *"Five minutes now becomes the least we give to
+  preparation for a day in which salvation is the only goal we have. Ten would
+  be better; fifteen better still."* So from there the one Begin button becomes
+  three side by side — **5 min · 10 min · 15 min** — and you sit for whichever
+  the day allows. The length the lesson itself asks for is the **bold** one, so
+  a day that sets its own (Lesson 201's *"should not be less than fifteen
+  minutes"*) still says so; before Lesson 153 the single Begin button stands,
+  because the workbook is still prescribing the length exactly.
 - **Watch today's video:** plays inline right above the lesson text, so you
   can watch (or just listen) while reading along — no browser or the Vimeo
   app opens.
-- **The meditation:** a soft bell rings, a **live 5-minute countdown** ticks
+- **The meditation:** a soft bell rings, a **live countdown** ticks
   down — in your notification shade *and* right in the app, so you can see it
   in whichever place is in front of you — and the bell rings again at the
   end, even if your screen is off and your phone is idle. Tap the countdown
@@ -308,9 +318,10 @@ grants at install.)
 ## Trying it right now
 
 You don't have to wait for the top of the hour. Open the app and tap
-**"Begin 5-minute meditation"** — the opening bell rings, the countdown starts,
-and the closing bell rings five minutes later. You can lock your phone and put
-it in your pocket; the end bell will still ring.
+**Begin** — or, from Lesson 153 on, whichever of **5 / 10 / 15 min** you have
+time for. The opening bell rings, the countdown starts, and the closing bell
+rings when the time is up. You can lock your phone and put it in your pocket;
+the end bell will still ring.
 
 ---
 
@@ -366,7 +377,7 @@ app/src/main/java/com/acimreminder/app/
   Scheduler.java          arms the 16 daily reminder alarms
   ReminderReceiver.java   posts each hourly lesson reminder notification
   BeginReceiver.java      the notification's Begin button
-  MeditationService.java  the 5-minute timer, countdown notification, cues
+  MeditationService.java  the sitting timer, countdown notification, cues
   BellPlayer.java         plays a bell as alarm audio
   Haptics.java            the start/end buzz cues
   EndBellReceiver.java    the exact alarm that fires the closing bell
