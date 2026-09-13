@@ -42,6 +42,7 @@ import android.widget.EditText;
 import android.widget.FrameLayout;
 import android.widget.LinearLayout;
 import android.widget.ProgressBar;
+import android.widget.ScrollView;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -114,6 +115,23 @@ public class MainActivity extends Activity implements Playback.Controller {
     private int splashBoxId;
     private ObjectAnimator splashPulse;
 
+    // The bar that floats over the reading, the room the status bar needs above
+    // it, and the 24dp gutter every pane pads itself by — all of which decide
+    // where a pinned video comes to rest. See applyPanePadding and pinVideo.
+    private View topBar;
+    private int statusTop;
+    private int bottomInset;
+    private int pad;
+    private float pinLift;
+
+    /**
+     * The video box held at the top of the window while it plays, so the lesson
+     * can be read past it; 0 when nothing is pinned. Set when a video starts and
+     * let go when it ends, is stopped, or its tab is left — a mere pause keeps
+     * it, so picking the video back up doesn't hunt for it.
+     */
+    private int pinnedBoxId;
+
     private Chronometer chronoMeditation;
     private final Handler mainHandler = new Handler(Looper.getMainLooper());
     private Runnable meditationEndRunnable;
@@ -132,19 +150,33 @@ public class MainActivity extends Activity implements Playback.Controller {
         setContentView(R.layout.activity_main);
         Notify.ensureChannels(this);
 
-        // The system draws us edge-to-edge. The tab bar is pinned at the top, so
-        // it takes the status-bar inset; each scrolling pane takes the navigation
-        // -bar inset at the bottom so the last line of text clears it.
-        final View tabBar = findViewById(R.id.tabBar);
-        final int pad = Math.round(24 * getResources().getDisplayMetrics().density);
-        ViewCompat.setOnApplyWindowInsetsListener(tabBar, (v, insets) -> {
+        // The system draws us edge-to-edge, and the panes now fill the window
+        // with the top bar floating over them. So the status-bar inset goes to
+        // the scrim behind the clock and to the bar's own offset below it, while
+        // each pane pads its content clear of the whole thing — and of the
+        // navigation bar at the bottom, so the last line of text clears that.
+        topBar = findViewById(R.id.topBar);
+        final View scrim = findViewById(R.id.statusScrim);
+        pad = Math.round(24 * getResources().getDisplayMetrics().density);
+        pinLift = 6 * getResources().getDisplayMetrics().density;
+        ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.root), (v, insets) -> {
             Insets bars = insets.getInsets(WindowInsetsCompat.Type.systemBars());
-            v.setPadding(0, bars.top, 0, 0);
-            findViewById(R.id.content).setPadding(pad, pad, pad, pad + bars.bottom);
-            findViewById(R.id.textContent).setPadding(pad, pad, pad, pad + bars.bottom);
-            findViewById(R.id.savedContent).setPadding(pad, pad, pad, pad + bars.bottom);
+            statusTop = bars.top;
+            bottomInset = bars.bottom;
+            scrim.getLayoutParams().height = bars.top;
+            scrim.requestLayout();
+            ((FrameLayout.LayoutParams) topBar.getLayoutParams()).topMargin = bars.top;
+            topBar.requestLayout();
+            applyPanePadding();
             return insets;
         });
+        // The bar's height changes when the update banner comes and goes, and
+        // the panes have to keep clearing it.
+        topBar.addOnLayoutChangeListener((v, l, t, r, b, ol, ot, or1, ob) -> applyPanePadding());
+
+        bindPaneScroll(R.id.workbookScroll, R.id.videoBox);
+        bindPaneScroll(R.id.textScroll, R.id.textVideoBox);
+        bindPaneScroll(R.id.savedScroll, 0);
 
         webView = setUpVideoPlayer(R.id.webView, R.id.videoProgress);
         textWebView = setUpVideoPlayer(R.id.textWebView, R.id.textVideoProgress);
@@ -280,11 +312,120 @@ public class MainActivity extends Activity implements Playback.Controller {
                 : tab == TAB_TEXT ? R.id.tabTextUnderline : R.id.tabSavedUnderline);
 
         // Leaving a tab stops whatever was playing in it, so switching away
-        // doesn't leave Marianne talking from a hidden pane.
+        // doesn't leave Marianne talking from a hidden pane — and lets go of a
+        // video pinned there, since nothing is playing to read along with now.
         if (tab != TAB_WORKBOOK) pausePlayer(webView);
         if (tab != TAB_TEXT) pausePlayer(textWebView);
+        if (tab != TAB_WORKBOOK && pinnedBoxId == R.id.videoBox) setPinnedBox(0);
+        if (tab != TAB_TEXT && pinnedBoxId == R.id.textVideoBox) setPinnedBox(0);
+
+        // You just reached the bar to get here, so it comes back whole rather
+        // than staying where the pane you left had slid it to.
+        syncTopBar();
 
         if (tab == TAB_SAVED) bindSaved();
+    }
+
+    // ------------------------------------------------- the bar and the pin
+
+    /**
+     * Watch a pane's scroll. Both effects hang off this: the top bar sliding out
+     * of the way, and a playing video staying put while the words move past it.
+     */
+    private void bindPaneScroll(int scrollId, int boxId) {
+        ScrollView pane = findViewById(scrollId);
+        pane.setOnScrollChangeListener((v, x, y, ox, oy) -> {
+            slideTopBar(y - oy, y);
+            pinVideo(boxId, y);
+        });
+    }
+
+    /** How much of the top bar is hidden, in pixels: 0 shows all of it. */
+    private int barHidden;
+
+    /**
+     * Move the top bar with the reading: it slides up out of the way a pixel at
+     * a time as you go down the lesson, and comes straight back the moment you
+     * scroll up — so the tabs are always one flick away rather than a long scroll
+     * back to the top. It hides under the status-bar scrim rather than past the
+     * top of the window, so the clock never has text sliding beneath it.
+     */
+    private void slideTopBar(int dy, int scrollY) {
+        if (topBar == null) return;
+        int hidden = scrollY <= 0 ? 0 : clamp(barHidden + dy, 0, topBar.getHeight());
+        if (hidden == barHidden) return;
+        barHidden = hidden;
+        topBar.setTranslationY(-hidden);
+    }
+
+    /** Put the whole bar back — on a tab change you have just used it. */
+    private void syncTopBar() {
+        barHidden = 0;
+        if (topBar != null) topBar.setTranslationY(0);
+    }
+
+    private static int clamp(int v, int lo, int hi) {
+        return v < lo ? lo : (v > hi ? hi : v);
+    }
+
+    /** Where a pinned video comes to rest: under the status bar, and under
+     *  however much of the top bar is currently showing. */
+    private int pinnedTop() {
+        return statusTop + (topBar == null ? 0 : topBar.getHeight() - barHidden);
+    }
+
+    /**
+     * Hold a playing video at the top of the window once the page has carried it
+     * that far, so you can read down the lesson while you watch. Nothing moves
+     * in the layout: the box keeps its place in the page and is simply pushed
+     * back down by however far the scroll has taken it, which leaves the words
+     * below running on past underneath.
+     *
+     * Only the pinned box does this — see {@link #pinnedBoxId}. A video you
+     * haven't started scrolls away like anything else, rather than a black
+     * rectangle holding the top of the screen all day.
+     */
+    private void pinVideo(int boxId, int scrollY) {
+        if (boxId == 0) return;
+        View box = findViewById(boxId);
+        if (boxId != pinnedBoxId || box.getVisibility() != View.VISIBLE) {
+            box.setTranslationY(0);
+            box.setTranslationZ(0);
+            return;
+        }
+        float past = scrollY - (box.getTop() - pinnedTop());
+        box.setTranslationY(Math.max(0, past));
+        // Lifted so the lesson passes UNDERNEATH it: children of a column are
+        // drawn in order otherwise, and the body text comes after the video.
+        box.setTranslationZ(past > 0 ? pinLift : 0);
+    }
+
+    /** Pin this box (0 = none) and settle both boxes where that leaves them. */
+    private void setPinnedBox(int boxId) {
+        if (pinnedBoxId == boxId) return;
+        pinnedBoxId = boxId;
+        refreshPins();
+    }
+
+    /** Settle both boxes where the current scroll and bar leave them. */
+    private void refreshPins() {
+        pinVideo(R.id.videoBox, ((ScrollView) findViewById(R.id.workbookScroll)).getScrollY());
+        pinVideo(R.id.textVideoBox, ((ScrollView) findViewById(R.id.textScroll)).getScrollY());
+    }
+
+    /** Keep the panes' content clear of the top bar, whatever height it is. */
+    private void applyPanePadding() {
+        if (topBar == null) return;
+        int top = statusTop + topBar.getHeight() + pad;
+        int bottom = pad + bottomInset;
+        for (int id : new int[]{R.id.content, R.id.textContent, R.id.savedContent}) {
+            View c = findViewById(id);
+            // Only when it actually changes — this runs from a layout pass.
+            if (c.getPaddingTop() == top && c.getPaddingBottom() == bottom) continue;
+            c.setPadding(pad, top, pad, bottom);
+        }
+        // The padding is part of where a pinned box rests, so settle it again.
+        refreshPins();
     }
 
     // -------------------------------------------------------------- motion
@@ -739,6 +880,9 @@ public class MainActivity extends Activity implements Playback.Controller {
     /** The &lt;video&gt; actually started — bring the media service up around it. */
     private void onVideoPlay(WebView player) {
         activePlayer = player;
+        // Playing is what the pin is for: from here the frame holds the top of
+        // the window so the lesson can be read along with it.
+        setPinnedBox(player == textWebView ? R.id.textVideoBox : R.id.videoBox);
         boolean isText = player == textWebView;
         TextDay day = TextDays.current(this);
         startPlaybackService(isText
@@ -753,9 +897,10 @@ public class MainActivity extends Activity implements Playback.Controller {
                 .setAction(PlaybackService.ACTION_PAUSED));
     }
 
-    /** Played to the end — let the service go. */
+    /** Played to the end — let the service go, and let the frame go with it. */
     private void onVideoEnded() {
         stopPlaybackService();
+        setPinnedBox(0);
     }
 
     /** Report the &lt;video&gt;'s own play/pause/ended back to the service. */
@@ -854,6 +999,7 @@ public class MainActivity extends Activity implements Playback.Controller {
 
     /** Hide a player and stop it loading. */
     private void resetPlayer(WebView player, int boxId) {
+        if (pinnedBoxId == boxId) setPinnedBox(0);   // nothing left to pin to
         hideFullscreen();
         findViewById(boxId).setVisibility(View.GONE);
         player.loadUrl("about:blank");
