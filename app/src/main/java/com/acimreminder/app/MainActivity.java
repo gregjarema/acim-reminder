@@ -124,14 +124,6 @@ public class MainActivity extends Activity implements Playback.Controller {
     private int pad;
     private float pinLift;
 
-    /**
-     * The video box held at the top of the window while it plays, so the lesson
-     * can be read past it; 0 when nothing is pinned. Set when a video starts and
-     * let go when it ends, is stopped, or its tab is left — a mere pause keeps
-     * it, so picking the video back up doesn't hunt for it.
-     */
-    private int pinnedBoxId;
-
     private Chronometer chronoMeditation;
     private final Handler mainHandler = new Handler(Looper.getMainLooper());
     private Runnable meditationEndRunnable;
@@ -312,12 +304,9 @@ public class MainActivity extends Activity implements Playback.Controller {
                 : tab == TAB_TEXT ? R.id.tabTextUnderline : R.id.tabSavedUnderline);
 
         // Leaving a tab stops whatever was playing in it, so switching away
-        // doesn't leave Marianne talking from a hidden pane — and lets go of a
-        // video pinned there, since nothing is playing to read along with now.
+        // doesn't leave Marianne talking from a hidden pane.
         if (tab != TAB_WORKBOOK) pausePlayer(webView);
         if (tab != TAB_TEXT) pausePlayer(textWebView);
-        if (tab != TAB_WORKBOOK && pinnedBoxId == R.id.videoBox) setPinnedBox(0);
-        if (tab != TAB_TEXT && pinnedBoxId == R.id.textVideoBox) setPinnedBox(0);
 
         // You just reached the bar to get here, so it comes back whole rather
         // than staying where the pane you left had slid it to.
@@ -375,22 +364,21 @@ public class MainActivity extends Activity implements Playback.Controller {
     }
 
     /**
-     * Hold a playing video at the top of the window once the page has carried it
-     * that far, so you can read down the lesson while you watch. Nothing moves
+     * Hold the video at the top of the window once the page has carried it that
+     * far, so you can read down the lesson while you watch. Nothing moves
      * in the layout: the box keeps its place in the page and is simply pushed
      * back down by however far the scroll has taken it, which leaves the words
      * below running on past underneath.
      *
-     * Only the pinned box does this — see {@link #pinnedBoxId}. A video you
-     * haven't started scrolls away like anything else, rather than a black
-     * rectangle holding the top of the screen all day.
+     * It holds whether or not the video is playing: the frame is where you
+     * reach for it, so it stays reachable — press play a paragraph in without
+     * scrolling back for it.
      */
     private void pinVideo(int boxId, int scrollY) {
         if (boxId == 0) return;
         View box = findViewById(boxId);
-        if (boxId != pinnedBoxId || box.getVisibility() != View.VISIBLE) {
-            box.setTranslationY(0);
-            box.setTranslationZ(0);
+        if (box.getVisibility() != View.VISIBLE) {
+            unpin(box);
             return;
         }
         float past = scrollY - (box.getTop() - pinnedTop());
@@ -400,11 +388,10 @@ public class MainActivity extends Activity implements Playback.Controller {
         box.setTranslationZ(past > 0 ? pinLift : 0);
     }
 
-    /** Pin this box (0 = none) and settle both boxes where that leaves them. */
-    private void setPinnedBox(int boxId) {
-        if (pinnedBoxId == boxId) return;
-        pinnedBoxId = boxId;
-        refreshPins();
+    /** Put a box back in its own place in the page. */
+    private void unpin(View box) {
+        box.setTranslationY(0);
+        box.setTranslationZ(0);
     }
 
     /** Settle both boxes where the current scroll and bar leave them. */
@@ -880,9 +867,6 @@ public class MainActivity extends Activity implements Playback.Controller {
     /** The &lt;video&gt; actually started — bring the media service up around it. */
     private void onVideoPlay(WebView player) {
         activePlayer = player;
-        // Playing is what the pin is for: from here the frame holds the top of
-        // the window so the lesson can be read along with it.
-        setPinnedBox(player == textWebView ? R.id.textVideoBox : R.id.videoBox);
         boolean isText = player == textWebView;
         TextDay day = TextDays.current(this);
         startPlaybackService(isText
@@ -897,10 +881,9 @@ public class MainActivity extends Activity implements Playback.Controller {
                 .setAction(PlaybackService.ACTION_PAUSED));
     }
 
-    /** Played to the end — let the service go, and let the frame go with it. */
+    /** Played to the end — let the service go. */
     private void onVideoEnded() {
         stopPlaybackService();
-        setPinnedBox(0);
     }
 
     /** Report the &lt;video&gt;'s own play/pause/ended back to the service. */
@@ -999,7 +982,7 @@ public class MainActivity extends Activity implements Playback.Controller {
 
     /** Hide a player and stop it loading. */
     private void resetPlayer(WebView player, int boxId) {
-        if (pinnedBoxId == boxId) setPinnedBox(0);   // nothing left to pin to
+        unpin(findViewById(boxId));   // it's about to be put away; drop any hold
         hideFullscreen();
         findViewById(boxId).setVisibility(View.GONE);
         player.loadUrl("about:blank");
