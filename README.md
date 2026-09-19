@@ -219,11 +219,17 @@ happens whenever more Text days are transcribed.
 
 ## What it does
 
-- **Reminders:** every hour on the hour from **06:00 to 22:00** (17 times a day)
-  your phone shows a notification whose headline *is* the idea of *today's*
-  lesson. Where the lesson gives a fuller two-line form to hold during practice
-  (e.g. Lesson 104's *"I seek but what belongs to me in truth, / And joy and
-  peace are my inheritance."*), the reminder offers the whole verse.
+- **Reminders:** on the hour, through the hours you've said you're willing to
+  be reminded within — **06:00 to 22:00** until you set your own — your phone
+  shows a notification whose headline *is* the idea of *today's* lesson. Where
+  the lesson gives a fuller two-line form to hold during practice (e.g. Lesson
+  104's *"I seek but what belongs to me in truth, / And joy and peace are my
+  inheritance."*), the reminder offers the whole verse.
+- **Reminder hours:** in the **⋯ menu**, set the earliest and latest hours a
+  reminder may reach you, so nothing arrives before you're up or after you've
+  turned in. It's more than a mute: a lesson that asks for a sitting *morning
+  and evening* puts those two sittings at the ends of **your** window, and its
+  passing remembrances fill the hours between.
 - **Begin button on the notification:** starts the 5-minute meditation straight
   away, without opening the app.
 - **Tap the notification itself:** opens the app to the full lesson, with a

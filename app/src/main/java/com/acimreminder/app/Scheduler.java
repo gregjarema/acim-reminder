@@ -15,9 +15,13 @@ import java.util.Set;
 /**
  * Schedules the day's practice reminders with AlarmManager.
  *
- * v1 schedule: one session every hour on the hour, 07:00–22:00 inclusive
- * (16 sessions). Each alarm is "exact + allowed while idle" so it fires
- * through Doze at the right minute.
+ * What the day looks like comes from the lesson — the workbook prescribes it
+ * and it changes constantly — and WHEN it may fall comes from you: the hours
+ * you're willing to be reminded within, 06:00–22:00 until you set your own
+ * (see {@link #startHour}, {@link #endHour} and {@link #setWindow}). The
+ * lesson's sittings land at the ends of that window and its passing
+ * remembrances fill the hours between. Each alarm is "exact + allowed while
+ * idle" so it fires through Doze at the right minute.
  *
  * Reliability model:
  *   - Each hour is a separate alarm keyed by its hour (request code = hour).
@@ -30,8 +34,51 @@ public final class Scheduler {
 
     private static final String TAG = "Scheduler";
 
-    public static final int START_HOUR = 6;   // 06:00
-    public static final int END_HOUR = 22;     // 22:00 inclusive
+    /**
+     * The hours you're willing to be reminded within, before you set your own:
+     * 06:00 to 22:00 inclusive. Change them in the app's menu — see
+     * {@link #setWindow}.
+     */
+    public static final int DEFAULT_START_HOUR = 6;
+    public static final int DEFAULT_END_HOUR = 22;
+
+    /** Your own window, in {@link OnboardingActivity#PREFS}. */
+    public static final String KEY_START_HOUR = "reminder_start_hour";
+    public static final String KEY_END_HOUR = "reminder_end_hour";
+
+    /** The first hour a reminder may land on. */
+    public static int startHour(Context ctx) {
+        int h = prefs(ctx).getInt(KEY_START_HOUR, DEFAULT_START_HOUR);
+        return h < 0 || h > 22 ? DEFAULT_START_HOUR : h;
+    }
+
+    /**
+     * The last hour a reminder may land on, inclusive. Always after the start:
+     * a window has to hold at least the two ends of a day, since that's where a
+     * morning-and-evening lesson puts its sittings.
+     */
+    public static int endHour(Context ctx) {
+        int start = startHour(ctx);
+        int h = prefs(ctx).getInt(KEY_END_HOUR, DEFAULT_END_HOUR);
+        if (h < 0 || h > 23) h = DEFAULT_END_HOUR;
+        return Math.max(start + 1, h);
+    }
+
+    /**
+     * Set the window and re-arm the day against it. Anything now outside it is
+     * cancelled by {@link #scheduleAll}, which sweeps the whole clock.
+     */
+    public static void setWindow(Context ctx, int startHour, int endHour) {
+        prefs(ctx).edit()
+                .putInt(KEY_START_HOUR, startHour)
+                .putInt(KEY_END_HOUR, endHour)
+                .apply();
+        scheduleAll(ctx);
+    }
+
+    private static android.content.SharedPreferences prefs(Context ctx) {
+        return ctx.getSharedPreferences(OnboardingActivity.PREFS, Context.MODE_PRIVATE);
+    }
 
     static final String ACTION_REMIND = "com.acimreminder.app.REMIND";
     static final String EXTRA_HOUR = "hour";
@@ -49,14 +96,17 @@ public final class Scheduler {
      * lesson doesn't leave yesterday's 17 alarms firing.
      */
     public static void scheduleAll(Context ctx) {
-        List<int[]> slots = slotsFor(Lessons.today(ctx));
+        List<int[]> slots = slotsFor(Lessons.today(ctx), startHour(ctx), endHour(ctx));
         Set<Integer> wanted = new HashSet<>();
         for (int[] hm : slots) {
             wanted.add(slotId(hm[0], hm[1]));
             scheduleSlot(ctx, hm[0], hm[1], hm.length > 2 && hm[2] == 1);
         }
-        // Clear anything previously armed that today doesn't want.
-        for (int hour = START_HOUR; hour <= END_HOUR; hour++) {
+        // Clear anything previously armed that today doesn't want. The whole
+        // clock, not just today's window: narrowing the window has to take down
+        // the alarms that fell outside it, and they're no longer in range to
+        // find by looking only at the hours we now want.
+        for (int hour = 0; hour <= 23; hour++) {
             for (int minute : ALL_MINUTES) {
                 int id = slotId(hour, minute);
                 if (!wanted.contains(id)) cancelSlot(ctx, hour, minute);
@@ -78,7 +128,7 @@ public final class Scheduler {
      * window. COUNT spreads its reminders evenly across the window — so "twice"
      * lands near the ends of the day, which is the workbook's morning-and-evening.
      */
-    static List<int[]> slotsFor(Lesson lesson) {
+    static List<int[]> slotsFor(Lesson lesson, int startHour, int endHour) {
         // The sittings, plus — where the lesson asks for it — an hourly nudge in
         // between. A lesson that already sits hourly needs no second track.
         // Each slot carries whether it's a sitting (1) or a passing
@@ -86,7 +136,7 @@ public final class Scheduler {
         // Sittings are added first, so a time that is both reads as a sitting.
         Set<Integer> seen = new HashSet<>();
         List<int[]> out = new ArrayList<>();
-        for (int[] hm : sittingSlots(lesson)) {
+        for (int[] hm : sittingSlots(lesson, startHour, endHour)) {
             if (seen.add(slotId(hm[0], hm[1]))) out.add(new int[]{hm[0], hm[1], 1});
         }
         if (lesson.hourlyRemembrance) {
@@ -96,7 +146,7 @@ public final class Scheduler {
             // a mark we also know how to cancel (see ALL_MINUTES).
             int step = lesson.remembranceEveryMinutes;
             step = step >= 60 ? 60 : step >= 30 ? 30 : step >= 20 ? 20 : step >= 15 ? 15 : 10;
-            for (int minutes = START_HOUR * 60; minutes <= END_HOUR * 60; minutes += step) {
+            for (int minutes = startHour * 60; minutes <= endHour * 60; minutes += step) {
                 int hour = minutes / 60, minute = minutes % 60;
                 if (seen.add(slotId(hour, minute))) out.add(new int[]{hour, minute, 0});
             }
@@ -106,41 +156,41 @@ public final class Scheduler {
         // above; here are the :30 ones in between. ReminderReceiver reads the
         // minute to decide which of the two thoughts to show.
         if (lesson.isReview()) {
-            for (int hour = START_HOUR; hour < END_HOUR; hour++) {
+            for (int hour = startHour; hour < endHour; hour++) {
                 if (seen.add(slotId(hour, 30))) out.add(new int[]{hour, 30, 0});
             }
         }
         return out;
     }
 
-    private static List<int[]> sittingSlots(Lesson lesson) {
+    private static List<int[]> sittingSlots(Lesson lesson, int startHour, int endHour) {
         List<int[]> out = new ArrayList<>();
         String kind = lesson.practiceKind == null ? Lesson.KIND_HOURLY : lesson.practiceKind;
 
         if (Lesson.KIND_INTERVAL.equals(kind)) {
             int step = Math.max(15, Math.min(60, lesson.practiceValue));
             step = step >= 60 ? 60 : (step >= 30 ? 30 : 15);   // snap to a clean grid
-            for (int minutes = START_HOUR * 60; minutes <= END_HOUR * 60; minutes += step) {
+            for (int minutes = startHour * 60; minutes <= endHour * 60; minutes += step) {
                 out.add(new int[]{minutes / 60, minutes % 60});
             }
             return out;
         }
 
         if (Lesson.KIND_COUNT.equals(kind)) {
-            int n = Math.max(1, Math.min(END_HOUR - START_HOUR + 1, lesson.practiceValue));
+            int n = Math.max(1, Math.min(endHour - startHour + 1, lesson.practiceValue));
             if (n == 1) {
-                out.add(new int[]{START_HOUR, 0});
+                out.add(new int[]{startHour, 0});
                 return out;
             }
-            // Evenly spaced, first at START_HOUR and last at END_HOUR.
+            // Evenly spaced, first at the start of your window and last at its end.
             for (int i = 0; i < n; i++) {
-                int hour = START_HOUR + Math.round((float) i * (END_HOUR - START_HOUR) / (n - 1));
+                int hour = startHour + Math.round((float) i * (endHour - startHour) / (n - 1));
                 out.add(new int[]{hour, 0});
             }
             return out;
         }
 
-        for (int hour = START_HOUR; hour <= END_HOUR; hour++) {
+        for (int hour = startHour; hour <= endHour; hour++) {
             out.add(new int[]{hour, 0});
         }
         return out;

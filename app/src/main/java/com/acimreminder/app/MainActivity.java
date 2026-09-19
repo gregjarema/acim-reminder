@@ -41,6 +41,7 @@ import android.widget.Chronometer;
 import android.widget.EditText;
 import android.widget.FrameLayout;
 import android.widget.LinearLayout;
+import android.widget.NumberPicker;
 import android.widget.ProgressBar;
 import android.widget.ScrollView;
 import android.widget.TextView;
@@ -501,7 +502,7 @@ public class MainActivity extends Activity implements Playback.Controller {
 
     private void showOverflow(View anchor) {
         android.widget.PopupMenu menu = new android.widget.PopupMenu(popupContext(), anchor);
-        final int JUMP = 1, WALLPAPER = 2, COPY = 3, DARK_WP = 4, DND = 5;
+        final int JUMP = 1, WALLPAPER = 2, COPY = 3, DARK_WP = 4, DND = 5, HOURS = 6;
 
         if (selectedTab == TAB_WORKBOOK || selectedTab == TAB_TEXT) {
             menu.getMenu().add(Menu.NONE, JUMP, 0,
@@ -523,6 +524,10 @@ public class MainActivity extends Activity implements Playback.Controller {
         } else {
             menu.getMenu().add(Menu.NONE, COPY, 0, "Copy all passages");
         }
+        // The hours you're willing to be reminded within. On every tab: it's
+        // about the day, not about whichever pane you happen to be reading.
+        menu.getMenu().add(Menu.NONE, HOURS, 9,
+                "Reminder hours  ·  " + reminderWindowLabel());
 
         menu.setOnMenuItemClickListener(item -> {
             switch (item.getItemId()) {
@@ -534,6 +539,7 @@ public class MainActivity extends Activity implements Playback.Controller {
                 case DARK_WP: toggleDarkWallpaper(!item.isChecked()); return true;
                 case DND: toggleDnd(!item.isChecked()); return true;
                 case COPY: copyAllSaved(); return true;
+                case HOURS: showReminderHoursDialog(); return true;
                 default: return false;
             }
         });
@@ -1128,6 +1134,127 @@ public class MainActivity extends Activity implements Playback.Controller {
         // The second track, where the lesson asks for both.
         if (l.hourlyRemembrance) s += " · plus hourly reminders";
         return s;
+    }
+
+    // -------------------------------------------------- reminder hours
+
+    /** "6 AM – 10 PM", or "06:00 – 22:00" on a 24-hour phone. */
+    private String reminderWindowLabel() {
+        return hourLabel(Scheduler.startHour(this)) + " – " + hourLabel(Scheduler.endHour(this));
+    }
+
+    /** One hour of the clock, written the way this phone writes the time. */
+    private String hourLabel(int hour) {
+        if (android.text.format.DateFormat.is24HourFormat(this)) {
+            return String.format(java.util.Locale.getDefault(), "%02d:00", hour);
+        }
+        int h12 = hour % 12 == 0 ? 12 : hour % 12;
+        return h12 + (hour < 12 ? " AM" : " PM");
+    }
+
+    private String[] hourLabels(int from, int to) {
+        String[] out = new String[to - from + 1];
+        for (int i = 0; i < out.length; i++) out[i] = hourLabel(from + i);
+        return out;
+    }
+
+    /**
+     * Choose the hours reminders may fall within. The lesson still decides what
+     * the day asks for; this decides when the asking is allowed to reach you, so
+     * nothing arrives before you're up or after you've turned in.
+     *
+     * The day's sittings sit at the two ends of the window — which is what makes
+     * this more than a mute: "morning and evening" becomes YOUR morning and YOUR
+     * evening. So the end is always kept at least an hour after the start,
+     * leaving the two ends somewhere to be.
+     */
+    private void showReminderHoursDialog() {
+        final int startWas = Scheduler.startHour(this);
+        final int endWas = Scheduler.endHour(this);
+        float density = getResources().getDisplayMetrics().density;
+        int gap = Math.round(16 * density);
+
+        final NumberPicker from = new NumberPicker(popupContext());
+        from.setMinValue(0);
+        from.setMaxValue(22);          // the end needs an hour of its own after it
+        from.setDisplayedValues(hourLabels(0, 22));
+        from.setValue(startWas);
+        from.setWrapSelectorWheel(false);
+
+        final NumberPicker to = new NumberPicker(popupContext());
+        setToRange(to, startWas + 1, endWas);
+        to.setWrapSelectorWheel(false);
+
+        // Keep the end after the start as the start moves. NumberPicker reads
+        // its labels from minValue up, so the array has to be replaced whenever
+        // the range does — and cleared first, or it indexes off the old one.
+        from.setOnValueChangedListener((picker, was, now) ->
+                setToRange(to, now + 1, Math.max(to.getValue(), now + 1)));
+
+        LinearLayout row = new LinearLayout(this);
+        row.setOrientation(LinearLayout.HORIZONTAL);
+        row.setGravity(android.view.Gravity.CENTER);
+        row.setPadding(gap, gap, gap, 0);
+        row.addView(labelled("From", from, density));
+        row.addView(labelled("Until", to, density));
+
+        TextView note = new TextView(popupContext());
+        note.setText("The day's sittings land at the ends of these hours, "
+                + "and any passing reminders fall in between.");
+        note.setTextSize(13);
+        note.setTextColor(0xFF8A7B63);
+        note.setPadding(gap + Math.round(8 * density), gap, gap + Math.round(8 * density), 0);
+        note.setTextIsSelectable(false);
+
+        LinearLayout body = new LinearLayout(this);
+        body.setOrientation(LinearLayout.VERTICAL);
+        body.addView(row);
+        body.addView(note);
+
+        new AlertDialog.Builder(this)
+                .setTitle("Reminder hours")
+                .setView(body)
+                .setPositiveButton("Save", (d, w) -> {
+                    int start = from.getValue();
+                    int end = Math.max(start + 1, to.getValue());
+                    Scheduler.setWindow(this, start, end);
+                    Toast.makeText(this, "Reminders between "
+                            + hourLabel(start) + " and " + hourLabel(end) + ".",
+                            Toast.LENGTH_SHORT).show();
+                })
+                .setNegativeButton("Cancel", null)
+                .show();
+    }
+
+    /** Point a picker at a range of hours, labels and all. */
+    private void setToRange(NumberPicker picker, int from, int value) {
+        // Clear the labels before the bounds move: they're indexed from the old
+        // minValue, and a shorter array under a wider range crashes the widget.
+        picker.setDisplayedValues(null);
+        picker.setMinValue(from);
+        picker.setMaxValue(23);
+        picker.setDisplayedValues(hourLabels(from, 23));
+        picker.setValue(Math.max(from, Math.min(23, value)));
+    }
+
+    /** A picker under its own small caption. */
+    private View labelled(String caption, View picker, float density) {
+        TextView label = new TextView(popupContext());
+        label.setText(caption);
+        label.setTextSize(12);
+        label.setLetterSpacing(0.12f);
+        label.setTextColor(0xFFA08A63);
+        label.setGravity(android.view.Gravity.CENTER);
+        label.setTextIsSelectable(false);
+
+        LinearLayout column = new LinearLayout(this);
+        column.setOrientation(LinearLayout.VERTICAL);
+        column.setGravity(android.view.Gravity.CENTER);
+        int side = Math.round(10 * density);
+        column.setPadding(side, 0, side, 0);
+        column.addView(label);
+        column.addView(picker);
+        return column;
     }
 
     /**
