@@ -27,6 +27,12 @@ jobs:
 
       - name: Set up the Android SDK
         uses: android-actions/setup-android@v3
+        with:
+          # Don't let the action install its default package set: that still
+          # asks for "tools", which Google has withdrawn, and sdkmanager now
+          # exits 1 on it — failing every build here before a line is compiled.
+          # The next step installs exactly what this app needs anyway.
+          packages: ''
 
       - name: Install the Android platform + build tools
         run: |
