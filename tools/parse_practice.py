@@ -114,6 +114,22 @@ OVERRIDES: dict[int, dict] = {
           "remembranceText": "When I am healed I am not healed alone.\n"
                               "And I would bless my brothers, for I would\n"
                               "be healed with them, as they are healed with me."},
+    # "spend five minutes practicing its ways" as we arise, "concluding it with
+    # this same invitation" at the end of the day, and "hourly invite Him" in
+    # between — morning and night, with an hourly invitation between them, not
+    # a five-minute sitting on every hour.
+    152: {"practiceMinutes": 5, "practiceKind": "count", "practiceValue": 2,
+          "hourlyRemembrance": True},
+    # The form "we will maintain for quite a while", and the parser read it as
+    # seventeen five-minute sittings a day. The lesson asks for one sitting on
+    # waking — "Five minutes now becomes the least we give... Ten would be
+    # better; fifteen better still" — and another at night ("Nor will we
+    # willingly give less at night"), with the hour between them carrying a
+    # REMEMBRANCE, not a sitting: "At times, perhaps, a minute, even less, will
+    # be the most that we can offer as the hour strikes... in hourly
+    # remembrance of our mission and His Love." Lessons 154-192 inherit this.
+    153: {"practiceMinutes": 5, "practiceKind": "count", "practiceValue": 2,
+          "hourlyRemembrance": True},
     # "spend five minutes" on waking and "the last five minutes of our
     # waking day" before sleep, plus "as every hour passed, we have declared
     # our choice again" in between. The parser read the "each hour in
@@ -534,6 +550,16 @@ def main() -> int:
 
         if l["number"] in OVERRIDES:
             l.update(OVERRIDES[l["number"]])
+            # A hand-verified correction is the truth about this lesson, so it
+            # is also what the lessons after it inherit — the workbook carries
+            # a stated practice forward until something restates it, and the
+            # heuristic's discarded guess must not be what gets carried. (Only
+            # here, in the inheriting path: a review day deliberately leaves
+            # the carried practice untouched.)
+            cur_min = l["practiceMinutes"]
+            cur_kind = l["practiceKind"]
+            cur_val = l["practiceValue"]
+            cur_remember = l["hourlyRemembrance"]
 
     from collections import Counter
     print(f"lessons: {len(lessons)}")
