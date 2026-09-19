@@ -55,6 +55,17 @@ med = _load_meditation_module()
 # practiceKind / practiceValue / hourlyRemembrance / remembranceEveryMinutes
 # the correction touches; anything not listed keeps the heuristic's value.
 OVERRIDES: dict[int, dict] = {
+    # "For each of the three five-minute practice periods today" — the parser
+    # missed the count buried in that phrase and read the day's OTHER track,
+    # "As often as possible during the day, pick up a specific attribute", as
+    # the sitting's frequency, making it a five-minute sitting every hour.
+    35: {"practiceMinutes": 5, "practiceKind": "count", "practiceValue": 3,
+         "hourlyRemembrance": True},
+    # "Four three-to-five-minute practice periods are required for today",
+    # plus "the shorter exercise periods" in between. It stated neither to the
+    # parser, so it inherited Lesson 35's mistake.
+    36: {"practiceMinutes": 5, "practiceKind": "count", "practiceValue": 4,
+         "hourlyRemembrance": True},
     # "four five-minute periods" — the parser read the "at least a minute"
     # aside instead.
     47: {"practiceMinutes": 5, "practiceKind": "count", "practiceValue": 4},
@@ -70,6 +81,12 @@ OVERRIDES: dict[int, dict] = {
     # the parser's 1-minute guess.
     107: {"practiceMinutes": 5, "practiceKind": "hourly", "practiceValue": 1,
           "hourlyRemembrance": False},
+    # "The Holy Spirit will be glad to take five minutes of each hour from your
+    # hands" — the hourly five minutes of the lessons either side of it. The
+    # parser took the rhetorical "a minute spent in using these ideas becomes a
+    # time that has no limit" for the instruction and cut the sitting to one.
+    97: {"practiceMinutes": 5, "practiceKind": "hourly", "practiceValue": 1,
+         "hourlyRemembrance": False},
     # "a quarter of an hour... morning and evening", remembrances "at least a
     # minute as each quarter of an hour passes by".
     122: {"practiceMinutes": 15, "practiceKind": "count", "practiceValue": 2,
@@ -77,6 +94,18 @@ OVERRIDES: dict[int, dict] = {
     # "devote a half an hour" — a single extended period, not two 15s, plus
     # the hourly "Let me remember I am one with God" remembrance.
     124: {"practiceMinutes": 30, "practiceKind": "count", "practiceValue": 1,
+          "hourlyRemembrance": True},
+    # "Five minutes in the morning and at night we will devote to dedicate our
+    # minds", and separately "we repeat our dedication to our cause today each
+    # hour" — the same two tracks Lesson 153 has, read the same wrong way: the
+    # hourly repetition became the sitting's frequency.
+    139: {"practiceMinutes": 5, "practiceKind": "count", "practiceValue": 2,
+          "hourlyRemembrance": True},
+    # "let Him speak to us five minutes as the day begins, and end the day by
+    # listening again five minutes more before we go to sleep" — morning and
+    # night — with "we will say our prayer for healing hourly, and take a
+    # minute as the hour strikes" as the remembrance between.
+    140: {"practiceMinutes": 5, "practiceKind": "count", "practiceValue": 2,
           "hourlyRemembrance": True},
     # "Three times today... give ten minutes", plus an hourly remembrance.
     125: {"practiceMinutes": 10, "practiceKind": "count", "practiceValue": 3,
