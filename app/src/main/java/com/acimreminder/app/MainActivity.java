@@ -343,24 +343,83 @@ public class MainActivity extends Activity implements Playback.Controller {
 
     /** How much of the top bar is hidden, in pixels: 0 shows all of it. */
     private int barHidden;
+    /** Pixels scrolled up since the last downward move — see {@link #slideTopBar}. */
+    private float scrolledUp;
+    private ObjectAnimator barReveal;
 
     /**
-     * Move the top bar with the reading: it slides up out of the way a pixel at
-     * a time as you go down the lesson, and comes straight back the moment you
-     * scroll up — so the tabs are always one flick away rather than a long scroll
-     * back to the top. It hides under the status-bar scrim rather than past the
-     * top of the window, so the clock never has text sliding beneath it.
+     * How far back up the page you have to come before the bar returns, in dp.
+     * Going back over a few lines is reading, not reaching for the menu: the
+     * body sets each line about 26dp apart, so this leaves four or five of them
+     * to re-read before anything moves. Past that you're going somewhere, and
+     * the bar is what you'd want when you arrive.
+     */
+    private static final float BAR_RETURNS_AFTER_DP = 120f;
+
+    /**
+     * Move the top bar with the reading. Going down the lesson it slides up out
+     * of the way a pixel at a time. Coming back up it stays away until you've
+     * come back a good way — then returns whole, rather than creeping in behind
+     * every small correction. It hides under the status-bar scrim rather than
+     * past the top of the window, so the clock never has text sliding beneath it.
      */
     private void slideTopBar(int dy, int scrollY) {
         if (topBar == null) return;
-        int hidden = scrollY <= 0 ? 0 : clamp(barHidden + dy, 0, topBar.getHeight());
-        if (hidden == barHidden) return;
-        barHidden = hidden;
-        topBar.setTranslationY(-hidden);
+
+        if (scrollY <= 0) {          // at the top of the page it always shows
+            scrolledUp = 0;
+            setBarHidden(0);
+            return;
+        }
+        if (dy > 0) {                // going down: the bar goes with the page
+            scrolledUp = 0;
+            cancelBarReveal();
+            setBarHidden(clamp(barHidden + dy, 0, topBar.getHeight()));
+        } else if (dy < 0 && barHidden > 0) {
+            scrolledUp -= dy;        // dy is negative going up
+            if (scrolledUp >= BAR_RETURNS_AFTER_DP * getResources().getDisplayMetrics().density) {
+                revealTopBar();
+            }
+        }
     }
 
-    /** Put the whole bar back — on a tab change you have just used it. */
+    /** Bring the whole bar back, and carry a pinned video down with it. */
+    private void revealTopBar() {
+        if (barReveal != null && barReveal.isRunning()) return;
+        cancelBarReveal();
+        scrolledUp = 0;
+        // Animated through the field rather than straight on the view, so a
+        // pinned video — which rests under whatever the bar is showing — comes
+        // down with it instead of jumping the moment the slide begins.
+        barReveal = ObjectAnimator.ofInt(this, "barHiddenPx", barHidden, 0);
+        barReveal.setDuration(ANIM_IN);
+        barReveal.setInterpolator(ease);
+        barReveal.start();
+    }
+
+    private void cancelBarReveal() {
+        if (barReveal != null) {
+            barReveal.cancel();
+            barReveal = null;
+        }
+    }
+
+    /** Named for {@link ObjectAnimator} above; not called directly. */
+    public void setBarHiddenPx(int hidden) {
+        setBarHidden(hidden);
+    }
+
+    private void setBarHidden(int hidden) {
+        if (hidden == barHidden || topBar == null) return;
+        barHidden = hidden;
+        topBar.setTranslationY(-hidden);
+        refreshPins();   // the bar is part of where a pinned video rests
+    }
+
+    /** Put the whole bar back at once — on a tab change you have just used it. */
     private void syncTopBar() {
+        cancelBarReveal();
+        scrolledUp = 0;
         barHidden = 0;
         if (topBar != null) topBar.setTranslationY(0);
     }
