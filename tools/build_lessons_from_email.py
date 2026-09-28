@@ -95,6 +95,110 @@ def clean_html(fragment):
     return WS.sub(lambda m: '\n' if '\n' in m.group(0) else ' ', s).strip('\n ')
 
 
+# A paragraph closes a sentence. Anything else at the end of one means the
+# paragraph break is not a paragraph break at all.
+SENTENCE_END = ('.', '!', '?', ':', '"', '\u201d', ')', ']')
+CLAUSE_END = (',', ';', '\u2014', '\u2013')
+
+# Words no line of verse ever ends on. A line that trails off on one of these
+# was wrapped by the mail client mid-clause, and rejoins even though what
+# follows opens with a capital — "banished from the mind of" / "God's one Son".
+DANGLING = {
+    'a', 'an', 'and', 'as', 'at', 'be', 'but', 'by', 'for', 'from', 'her',
+    'his', 'in', 'into', 'is', 'its', 'my', 'nor', 'not', 'of', 'on', 'or',
+    'our', 'so', 'than', 'that', 'the', 'their', 'then', 'to', 'unto', 'upon',
+    'was', 'which', 'who', 'with', 'would', 'your',
+}
+
+
+def _plain(fragment):
+    return html.unescape(TAG.sub('', fragment)).strip()
+
+
+def _all_italic(para):
+    p = para.strip()
+    return p.startswith('<i>') and p.endswith('</i>')
+
+
+def _dangles(text):
+    words = re.findall(r"[A-Za-z']+", text)
+    return bool(words) and words[-1].lower() in DANGLING
+
+
+def _lead_in(text):
+    """A short line that introduces what follows — "or:", "Then say:"."""
+    return text.endswith(':') and len(text) <= 24
+
+
+def join_paragraphs(richs):
+    """Join the paragraphs of a body, healing the ones that aren't paragraphs.
+
+    These emails don't only hard-wrap inside a <p> (which keep_break already
+    mends) — some give a wrapped line its OWN <p>, so the body ends up with a
+    blank line through the middle of a sentence:
+
+        <i>Your grace is given me. I claim it now. Father, I come</i>
+
+        <i>to You. And You will come to me who ask.</i>
+
+    A paragraph closes a sentence. One that stops mid-clause never meant to end
+    at all, and what follows continues it — so the two rejoin.
+
+    Deliberately narrow: only a break with NO punctuation before it is mended,
+    and only when what follows plainly continues the sentence (it opens in
+    lower case, or the line trails off on a word like "of" or "the"). A verse
+    whose lines end on commas keeps them, because those lines are real, and
+    because the meditation verse is harvested from these same paragraphs — see
+    tools/meditation.py, which reads a line of verse as a paragraph of its own.
+    That also leaves a heading ("Introduction"), a lead-in ("or:") and a verse
+    of complete lines (Lesson 37's "My holiness blesses this chair") standing
+    on their own, all of which end without punctuation too.
+    """
+    out = []
+    for para in (p for p in richs if p and p.strip()):
+        if not out:
+            out.append(para.strip())
+            continue
+        before, after = _plain(out[-1]), _plain(para)
+        # A clause that ended is a line of verse when the passage is italic all
+        # the way through — those lines are real and stay. In prose it's just
+        # where the line ran out, and the sentence carries on below.
+        verse = _all_italic(out[-1]) and _all_italic(para)
+        ended = (before.endswith(SENTENCE_END)
+                 or (verse and before.endswith(CLAUSE_END)))
+        joins = (before and after and not ended
+                 and not _lead_in(after)
+                 and (after[:1].islower() or _dangles(before)))
+        if not joins:
+            out.append(para.strip())
+            continue
+
+        # These emails pad the inside of their runs — "…emotion], </i>" meets
+        # "<i> and so on" — which reads as a double space once joined.
+        left = re.sub(r'\s+(</i>)$', r'\1', out[-1].rstrip())
+        right = re.sub(r'^(<i>)\s+', r'\1', para.strip())
+        if left.endswith('</i>') and right.startswith('<i>'):
+            # Splice the two runs into one rather than leaving them abutting,
+            # so the mended line reads as the single passage it is.
+            out[-1] = left[:-4].rstrip() + ' ' + right[3:].lstrip()
+        else:
+            out[-1] = left + ' ' + right
+        out[-1] = _tidy_spaces(out[-1])
+    return "\n\n".join(out)
+
+
+def _tidy_spaces(para):
+    """These emails pad the inside of their runs — "<i> I welcome them" — which
+    shows as a stray indent once the lines are gathered into one passage."""
+    para = re.sub(r'[ \t]{2,}', ' ', para)
+    para = re.sub(r' *\n *', '\n', para)
+    # Only at the outer edges: a space INSIDE the passage can be the only thing
+    # separating two runs, and Lesson 7 splits a word across them —
+    # "<i> I t </i><i> is the reason" — so taking those out spells "tis".
+    para = re.sub(r'^\s*<i>\s+', '<i>', para)
+    return re.sub(r'\s+</i>\s*$', '</i>', para)
+
+
 def decode_keap(url):
     """Recover the real destination URL from a Keap tracking link, else None."""
     m = re.search(r'/v2/click/[^/]+/([A-Za-z0-9_\-]+)', url)
@@ -135,7 +239,7 @@ def extract(path):
     rich = [h for _, h in pairs]
 
     def result(phrase, body_richs):
-        body = "\n\n".join(b for b in body_richs if b)
+        body = join_paragraphs(body_richs)
         # Some later "prayer" emails are just the prayer in a single paragraph with
         # no separate idea line, which would leave the body empty. Peel the first
         # sentence off as the phrase and keep the remainder as the body.
@@ -238,7 +342,7 @@ def extract_welcome(path):
     parts = (["<b>Introduction</b>"] + intro_body
              + ["<b>Lesson 1</b>"] + lesson_body)
     return {"number": 1, "title": "Lesson 1", "phrase": phrase,
-            "video": find_video(src), "body": "\n\n".join(b for b in parts if b)}
+            "video": find_video(src), "body": join_paragraphs(parts)}
 
 
 def main():

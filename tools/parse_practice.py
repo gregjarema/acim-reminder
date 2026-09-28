@@ -117,12 +117,30 @@ OVERRIDES: dict[int, dict] = {
     # minutes" plus the hourly "be still a moment" remembrance.
     129: {"practiceMinutes": 10, "practiceKind": "count", "practiceValue": 3,
           "hourlyRemembrance": True},
-    # "six times, five minutes" plus an hourly remembrance.
+    # "six times, five minutes" plus an hourly remembrance. Its two verses are
+    # stated outright because the harvest picks them by paragraph, and mending
+    # this lesson's wrapped line (see join_paragraphs) left the sitting's verse
+    # one paragraph shorter than the hourly one — so the hourly verse won both
+    # slots and the sitting's was lost.
     130: {"practiceMinutes": 5, "practiceKind": "count", "practiceValue": 6,
-          "hourlyRemembrance": True},
-    # "ten minutes, three times" plus an hourly remembrance.
+          "hourlyRemembrance": True,
+          "meditationText": "It is impossible to see two worlds. Let me accept "
+                             "the strength God offers me and see no value in "
+                             "this world,\nthat I may find my freedom and "
+                             "deliverance.",
+          "remembranceText": "It is impossible to see two worlds.\n"
+                              "I seek my freedom and deliverance,\n"
+                              "and this is not a part of what I want."},
+    # "ten minutes, three times" plus an hourly remembrance. The sitting's verse
+    # is stated for the same reason as 130's: once its wrapped lines were
+    # mended it ran to fewer paragraphs than the harvest expects, and the next
+    # verse was swept in on the end of it.
     131: {"practiceMinutes": 10, "practiceKind": "count", "practiceValue": 3,
-          "hourlyRemembrance": True},
+          "hourlyRemembrance": True,
+          "meditationText": "I ask to see a different world, and think a "
+                             "different kind of thought from those I made. The "
+                             "world I seek I did not make alone, the thoughts I "
+                             "want to think are not my own."},
     # "fifteen-minute periods, twice" plus an hourly remembrance.
     132: {"practiceMinutes": 15, "practiceKind": "count", "practiceValue": 2,
           "hourlyRemembrance": True},
