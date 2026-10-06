@@ -46,6 +46,23 @@ public final class Scheduler {
     public static final String KEY_START_HOUR = "reminder_start_hour";
     public static final String KEY_END_HOUR = "reminder_end_hour";
 
+    /**
+     * Whether the passing remembrances — the hourly nudges between a lesson's
+     * sittings — are wanted at all. On by default; switch it off in the menu to
+     * keep only the sittings.
+     */
+    public static final String KEY_REMEMBRANCES_ON = "remembrance_reminders_on";
+
+    public static boolean remembrancesOn(Context ctx) {
+        return prefs(ctx).getBoolean(KEY_REMEMBRANCES_ON, true);
+    }
+
+    /** Turn the passing remembrances on or off and re-arm the day to match. */
+    public static void setRemembrancesOn(Context ctx, boolean on) {
+        prefs(ctx).edit().putBoolean(KEY_REMEMBRANCES_ON, on).apply();
+        scheduleAll(ctx);
+    }
+
     /** The first hour a reminder may land on. */
     public static int startHour(Context ctx) {
         int h = prefs(ctx).getInt(KEY_START_HOUR, DEFAULT_START_HOUR);
@@ -97,6 +114,15 @@ public final class Scheduler {
      */
     public static void scheduleAll(Context ctx) {
         List<int[]> slots = slotsFor(Lessons.today(ctx), startHour(ctx), endHour(ctx));
+        if (!remembrancesOn(ctx)) {
+            // Keep only the sittings (flag 1); the passing remembrances are off.
+            // Their alarms are cancelled by the sweep below, being unwanted.
+            List<int[]> sittings = new ArrayList<>();
+            for (int[] hm : slots) {
+                if (hm.length > 2 && hm[2] == 1) sittings.add(hm);
+            }
+            slots = sittings;
+        }
         Set<Integer> wanted = new HashSet<>();
         for (int[] hm : slots) {
             wanted.add(slotId(hm[0], hm[1]));

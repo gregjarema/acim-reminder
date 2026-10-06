@@ -561,7 +561,7 @@ public class MainActivity extends Activity implements Playback.Controller {
 
     private void showOverflow(View anchor) {
         android.widget.PopupMenu menu = new android.widget.PopupMenu(popupContext(), anchor);
-        final int JUMP = 1, WALLPAPER = 2, COPY = 3, DARK_WP = 4, DND = 5, HOURS = 6;
+        final int JUMP = 1, WALLPAPER = 2, COPY = 3, DARK_WP = 4, DND = 5, HOURS = 6, REMEMBER = 7;
 
         if (selectedTab == TAB_WORKBOOK || selectedTab == TAB_TEXT) {
             menu.getMenu().add(Menu.NONE, JUMP, 0,
@@ -588,8 +588,15 @@ public class MainActivity extends Activity implements Playback.Controller {
         menu.getMenu().add(Menu.NONE, HOURS, 9,
                 "Reminder hours  ·  " + reminderWindowLabel());
 
+        // Switch off the hourly nudges between sittings, keeping the sittings.
+        MenuItem remember = menu.getMenu().add(Menu.NONE, REMEMBER, 8,
+                "Hourly reminders");
+        remember.setCheckable(true);
+        remember.setChecked(Scheduler.remembrancesOn(this));
+
         menu.setOnMenuItemClickListener(item -> {
             switch (item.getItemId()) {
+                case REMEMBER: toggleRemembrances(!item.isChecked()); return true;
                 case JUMP:
                     if (selectedTab == TAB_TEXT) showJumpToDayDialog();
                     else showJumpToLessonDialog();
@@ -1116,6 +1123,23 @@ public class MainActivity extends Activity implements Playback.Controller {
                         Toast.LENGTH_SHORT).show();
             }
         }
+    }
+
+    /**
+     * Turn the passing hourly reminders on or off. Sittings (the timed
+     * practices) are unaffected. Re-arms the day so the change is immediate.
+     */
+    private void toggleRemembrances(boolean on) {
+        Scheduler.setRemembrancesOn(this, on);
+        if (!on) {
+            android.app.NotificationManager nm =
+                    getSystemService(android.app.NotificationManager.class);
+            if (nm != null) nm.cancel(ReminderReceiver.NOTIF_REMINDER);
+        }
+        Toast.makeText(this, on
+                        ? "Hourly reminders on."
+                        : "Hourly reminders off — your sittings still remind you.",
+                Toast.LENGTH_LONG).show();
     }
 
     /**
