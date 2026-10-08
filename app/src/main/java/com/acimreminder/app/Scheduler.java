@@ -63,6 +63,22 @@ public final class Scheduler {
         scheduleAll(ctx);
     }
 
+    /**
+     * Whether the sitting reminders — the "Begin" nudges for a lesson's timed
+     * meditation — are wanted. On by default.
+     */
+    public static final String KEY_MEDITATION_REMINDERS_ON = "meditation_reminders_on";
+
+    public static boolean meditationRemindersOn(Context ctx) {
+        return prefs(ctx).getBoolean(KEY_MEDITATION_REMINDERS_ON, true);
+    }
+
+    /** Turn the sitting reminders on or off and re-arm the day to match. */
+    public static void setMeditationRemindersOn(Context ctx, boolean on) {
+        prefs(ctx).edit().putBoolean(KEY_MEDITATION_REMINDERS_ON, on).apply();
+        scheduleAll(ctx);
+    }
+
     /** The first hour a reminder may land on. */
     public static int startHour(Context ctx) {
         int h = prefs(ctx).getInt(KEY_START_HOUR, DEFAULT_START_HOUR);
@@ -122,6 +138,16 @@ public final class Scheduler {
                 if (hm.length > 2 && hm[2] == 1) sittings.add(hm);
             }
             slots = sittings;
+        }
+        if (!meditationRemindersOn(ctx) && Lessons.today(ctx).hasTimedPractice()) {
+            // Drop the sittings (flag 1). Only on a lesson that has a timed
+            // meditation: elsewhere the "sittings" are just the hourly
+            // reminders, which have their own switch.
+            List<int[]> rest = new ArrayList<>();
+            for (int[] hm : slots) {
+                if (!(hm.length > 2 && hm[2] == 1)) rest.add(hm);
+            }
+            slots = rest;
         }
         Set<Integer> wanted = new HashSet<>();
         for (int[] hm : slots) {

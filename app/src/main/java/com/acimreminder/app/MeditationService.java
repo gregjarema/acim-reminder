@@ -118,7 +118,7 @@ public class MeditationService extends Service {
             // The end is now handled directly by EndBellReceiver (see endNow),
             // which doesn't need this service to be running. Tolerate a stray
             // ACTION_END by ending cleanly anyway.
-            endNow(this);
+            endNow(this, true);
         } else if (ACTION_STOP.equals(action)) {
             handleStop();
         } else {
@@ -192,7 +192,7 @@ public class MeditationService extends Service {
      * end bell silently never rang. A broadcast receiver posting a notification
      * needs none of that, and fires even if the process was already reclaimed.
      */
-    static void endNow(Context ctx) {
+    static void endNow(Context ctx, boolean channelRings) {
         Notify.ensureChannels(ctx);
         // Put Do Not Disturb back BEFORE sounding the closing cue: our
         // notification channel is never granted the separate system
@@ -201,7 +201,7 @@ public class MeditationService extends Service {
         // a "Silence with Do Not Disturb" sitting is still in ALARMS_ONLY
         // mode was silently swallowing both the bell and the vibration.
         restoreDnd(ctx);
-        postCompletion(ctx);
+        postCompletion(ctx, channelRings);
         ctx.getSharedPreferences(OnboardingActivity.PREFS, Context.MODE_PRIVATE)
                 .edit().remove(KEY_MEDITATION_END_AT).apply();
         NotificationManager nm = ctx.getSystemService(NotificationManager.class);
@@ -216,13 +216,17 @@ public class MeditationService extends Service {
      * channel (bell + buzz); Vibrate uses the silent channel plus a direct buzz;
      * Silent shows a silent notification only. It clears itself after ten seconds.
      */
-    private static void postCompletion(Context ctx) {
+    private static void postCompletion(Context ctx, boolean channelRings) {
         NotificationManager nm = ctx.getSystemService(NotificationManager.class);
         if (nm == null) return;
         AudioManager am = ctx.getSystemService(AudioManager.class);
         int mode = am != null ? am.getRingerMode() : AudioManager.RINGER_MODE_NORMAL;
 
-        boolean ring = mode == AudioManager.RINGER_MODE_NORMAL;
+        // Ring through the channel only when nothing else is going to: the alarm
+        // receiver plays the bell itself, so letting the channel ring as well
+        // sounded the bell twice in quick succession. The buzz then comes from
+        // here, since the silent channel carries none.
+        boolean ring = channelRings && mode == AudioManager.RINGER_MODE_NORMAL;
         Log.i(TAG, "postCompletion: ringerMode=" + mode + " ring=" + ring);
         android.app.NotificationChannel ch = nm.getNotificationChannel(
                 ring ? Notify.CH_MEDITATION_DONE : Notify.CH_MEDITATION);

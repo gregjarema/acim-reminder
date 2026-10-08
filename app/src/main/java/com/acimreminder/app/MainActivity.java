@@ -561,7 +561,7 @@ public class MainActivity extends Activity implements Playback.Controller {
 
     private void showOverflow(View anchor) {
         android.widget.PopupMenu menu = new android.widget.PopupMenu(popupContext(), anchor);
-        final int JUMP = 1, WALLPAPER = 2, COPY = 3, DARK_WP = 4, DND = 5, HOURS = 6, REMEMBER = 7;
+        final int JUMP = 1, WALLPAPER = 2, COPY = 3, DARK_WP = 4, DND = 5, HOURS = 6, REMEMBER = 7, MEDREM = 8;
 
         if (selectedTab == TAB_WORKBOOK || selectedTab == TAB_TEXT) {
             menu.getMenu().add(Menu.NONE, JUMP, 0,
@@ -594,8 +594,14 @@ public class MainActivity extends Activity implements Playback.Controller {
         remember.setCheckable(true);
         remember.setChecked(Scheduler.remembrancesOn(this));
 
+        MenuItem medRem = menu.getMenu().add(Menu.NONE, MEDREM, 8,
+                "Meditation reminders");
+        medRem.setCheckable(true);
+        medRem.setChecked(Scheduler.meditationRemindersOn(this));
+
         menu.setOnMenuItemClickListener(item -> {
             switch (item.getItemId()) {
+                case MEDREM: toggleMeditationReminders(!item.isChecked()); return true;
                 case REMEMBER: toggleRemembrances(!item.isChecked()); return true;
                 case JUMP:
                     if (selectedTab == TAB_TEXT) showJumpToDayDialog();
@@ -1123,6 +1129,20 @@ public class MainActivity extends Activity implements Playback.Controller {
                         Toast.LENGTH_SHORT).show();
             }
         }
+    }
+
+    /** Turn the timed-meditation ("Begin") reminders on or off. */
+    private void toggleMeditationReminders(boolean on) {
+        Scheduler.setMeditationRemindersOn(this, on);
+        if (!on) {
+            android.app.NotificationManager nm =
+                    getSystemService(android.app.NotificationManager.class);
+            if (nm != null) nm.cancel(ReminderReceiver.NOTIF_REMINDER);
+        }
+        Toast.makeText(this, on
+                        ? "Meditation reminders on."
+                        : "Meditation reminders off — you can still start a sitting from the app.",
+                Toast.LENGTH_LONG).show();
     }
 
     /**

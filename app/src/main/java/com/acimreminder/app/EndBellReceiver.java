@@ -33,7 +33,7 @@ public class EndBellReceiver extends BroadcastReceiver {
     @Override
     public void onReceive(Context ctx, Intent intent) {
         Log.i(TAG, "onReceive: firing");
-        MeditationService.endNow(ctx);
+        MeditationService.endNow(ctx, false);
 
         AudioManager am = ctx.getSystemService(AudioManager.class);
         int mode = am != null ? am.getRingerMode() : AudioManager.RINGER_MODE_NORMAL;
