@@ -1057,6 +1057,29 @@ public class MainActivity extends Activity implements Playback.Controller {
                 + "var n=p;while(n&&n!==document.body){var par=n.parentNode;"
                 + "if(par&&par.children){Array.prototype.forEach.call(par.children,"
                 + "function(s){if(s!==n&&!keep(s))s.style.display='none';});}n=par;}"
+                // The page keeps the player inside cards that pad, inset and
+                // shadow it, which is the pale frame round the picture. Flatten
+                // every ancestor to black and try zeroing its padding, margins
+                // and width cap — but keep a change only if the video doesn't
+                // shrink, since a wrapper may be holding the 16:9 shape open
+                // with padding (the aspect-ratio trick). Measured, not guessed,
+                // so it doesn't depend on Vimeo's markup.
+                + "function vr(){return p.getBoundingClientRect();}"
+                + "function tryCss(el,prop,val,grow){var o=el.style[prop];"
+                + "var b=vr();el.style[prop]=val;var a=vr();"
+                + "var ok=grow?a.width>b.width+0.5"
+                + ":(a.width>=b.width-0.5&&a.height>=b.height-0.5);"
+                + "if(!ok)el.style[prop]=o;}"
+                + "var q=p.parentNode;"
+                + "while(q&&q.nodeType===1){"
+                + "var st=q.style;st.background='#000';st.boxShadow='none';"
+                + "st.border='0';st.borderRadius='0';"
+                + "if(q!==document.documentElement&&!q.__acimFlat){q.__acimFlat=1;"
+                + "['paddingLeft','paddingRight','paddingTop','paddingBottom',"
+                + "'marginTop','marginBottom']"
+                + ".forEach(function(k){tryCss(q,k,'0',false);});"
+                + "tryCss(q,'maxWidth','none',true);}"
+                + "q=q.parentNode;}"
                 + "document.body.style.margin='0';"
                 + "document.documentElement.style.background='#000';"
                 + "window.scrollTo(0,0);"
