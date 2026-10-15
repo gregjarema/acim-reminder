@@ -1082,6 +1082,32 @@ public class MainActivity extends Activity implements Playback.Controller {
                 + "q=q.parentNode;}"
                 + "document.body.style.margin='0';"
                 + "document.documentElement.style.background='#000';"
+                // Padding can't always be zeroed away (the player may be sized
+                // by the page itself), so finish by scaling the whole page until
+                // the picture — not the element, which can hold a letterbox —
+                // fills the frame edge to edge. Measured with the transform
+                // cleared, so it's safe to re-run; kept right on resize.
+                + "if(!window.__acimFit){window.__acimFit=true;"
+                + "window.__acimDoFit=function(){try{"
+                + "var b=document.body,d=document.documentElement;"
+                + "b.style.transformOrigin='0 0';d.style.overflow='hidden';"
+                + "b.style.transform='none';"
+                + "if(document.fullscreenElement)return;"
+                + "var r=p.getBoundingClientRect();"
+                + "var cl=r.left,ct=r.top,cw=r.width,ch=r.height;"
+                + "var vw=p.videoWidth,vh=p.videoHeight;"
+                + "if(vw&&vh){var k=Math.min(r.width/vw,r.height/vh);"
+                + "cw=vw*k;ch=vh*k;cl=r.left+(r.width-cw)/2;ct=r.top+(r.height-ch)/2;}"
+                + "if(cw<10||ch<10)return;"
+                + "var sc=window.innerWidth/cw;"
+                + "if(Math.abs(sc-1)<0.005&&Math.abs(cl)<1&&Math.abs(ct)<1)return;"
+                + "b.style.transform='translate('+(-cl*sc)+'px,'+(-ct*sc)+'px) scale('+sc+')';"
+                + "}catch(e){}};"
+                + "window.addEventListener('resize',window.__acimDoFit);"
+                + "document.addEventListener('fullscreenchange',window.__acimDoFit);"
+                + "try{p.addEventListener('loadedmetadata',window.__acimDoFit);}catch(e){}"
+                + "try{new ResizeObserver(window.__acimDoFit).observe(p);}catch(e){}}"
+                + "if(window.__acimDoFit)window.__acimDoFit();"
                 + "window.scrollTo(0,0);"
                 + "seen++;"
                 + "var sig=Math.round(r.width)+'x'+Math.round(r.height)+':'"
