@@ -1088,6 +1088,14 @@ public class MainActivity extends Activity implements Playback.Controller {
                 // fills the frame edge to edge. Measured with the transform
                 // cleared, so it's safe to re-run; kept right on resize.
                 + "if(!window.__acimFit){window.__acimFit=true;"
+                // The picture can also be inset INSIDE the player element (a
+                // contained poster or letterboxed video), which scaling the
+                // element can't reach. Have the picture itself cover its box.
+                + "try{var cv=document.createElement('style');"
+                + "cv.textContent='video,[class*=preview] img,[class*=poster] img,img.vp-preview"
+                + "{object-fit:cover!important}[class*=preview],[class*=poster]"
+                + "{background-size:cover!important}';"
+                + "document.head.appendChild(cv);}catch(e){}"
                 // TEMPORARY diagnostics: a small readout of the player's
                 // measurements, to find out why the picture isn't filling the
                 // frame on the real page. Remove once that's fixed.
