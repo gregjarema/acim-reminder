@@ -1048,6 +1048,100 @@ public class MainActivity extends Activity implements Playback.Controller {
                 + "var p=document.querySelector('video')"
                 + "||document.querySelector('iframe[src*=\"player.vimeo.com\"]');"
                 + "if(p){var r=p.getBoundingClientRect();"
+                // Padding can't always be zeroed away (the player may be sized
+                // by the page itself), so finish by scaling the whole page until
+                // the picture — not the element, which can hold a letterbox —
+                // fills the frame edge to edge. Measured with the transform
+                // cleared, so it's safe to re-run; kept right on resize.
+                + "if(!window.__acimFit){window.__acimFit=true;"
+                // The picture can also be inset INSIDE the player element (a
+                // contained poster or letterboxed video), which scaling the
+                // element can't reach. Have the picture itself cover its box.
+                + "try{var cv=document.createElement('style');"
+                + "cv.textContent='video,[class*=preview] img,[class*=poster] img,img.vp-preview"
+                + "{object-fit:cover!important}[class*=preview],[class*=poster]"
+                + "{background-size:cover!important}';"
+                + "document.head.appendChild(cv);}catch(e){}"
+                // TEMPORARY diagnostics: a small readout of the player's
+                // measurements, to find out why the picture isn't filling the
+                // frame on the real page. Remove once that's fixed.
+                + "window.__acimDbg=function(){try{"
+                + "var o=document.getElementById('__acimdbg');"
+                + "if(!o){o=document.createElement('div');o.id='__acimdbg';"
+                + "o.style.cssText='position:fixed;left:0;top:0;z-index:2147483647;"
+                + "background:rgba(0,0,0,.8);color:#7f7;font:9px/1.2 monospace;"
+                + "padding:2px;pointer-events:none;white-space:pre';"
+                + "document.documentElement.appendChild(o);}"
+                + "var r=p.getBoundingClientRect(),n=window.__acimN||0;"
+                + "var t='n'+n+' W'+innerWidth+'x'+innerHeight+' dpr'+devicePixelRatio"
+                + "+' err:'+(window.__acimErr||'-')+'\\n'"
+                + "+'V '+Math.round(r.left)+','+Math.round(r.top)+' '+Math.round(r.width)"
+                + "+'x'+Math.round(r.height)+' vid'+p.videoWidth+'x'+p.videoHeight"
+                + "+' tf:'+document.body.style.transform+'\\nS '+(window.__acimS||'-')+'\\n';"
+                + "var q=p;for(var i=0;i<9&&q&&q!==document.documentElement;i++){"
+                + "var b=q.getBoundingClientRect(),cs=getComputedStyle(q);"
+                + "t+=q.tagName+'.'+String(q.className||'').slice(0,20)+' '"
+                + "+Math.round(b.left)+','+Math.round(b.top)+' '+Math.round(b.width)+'x'"
+                + "+Math.round(b.height)+' p'+cs.paddingLeft+' '+cs.position+'\\n';"
+                + "q=q.parentNode;}"
+                + "o.textContent=t;}catch(e){}};"
+                + "window.__acimDoFit=function(){window.__acimN=(window.__acimN||0)+1;try{"
+                + "var b=document.body,d=document.documentElement;"
+                + "b.style.transformOrigin='0 0';d.style.overflow='hidden';"
+                + "b.style.transform='none';"
+                + "if(document.fullscreenElement)return;"
+                + "var W=window.innerWidth,H=window.innerHeight;"
+                + "var okH=Math.abs(H/W-0.5625)<0.05,TH=okH?H:W*0.5625;"
+                // The <video> is often 0x0 (it only exists once you press play;
+                // the title card is a separate layer), so measure the player's
+                // visible LAYERS instead: the wide elements inside the page.
+                + "function layers(){var out=[],all=b.querySelectorAll('*');"
+                + "for(var i=0;i<all.length;i++){var e=all[i];if(e.id==='__acimdbg')continue;"
+                + "var c=getComputedStyle(e);if(c.display==='none'||c.visibility==='hidden')continue;"
+                + "var q=e.getBoundingClientRect();"
+                + "if(q.width>=W*0.9&&q.height>=W*0.3)out.push([e,q]);}return out;}"
+                + "function span(L){var t=1e9,u=-1e9,l=1e9,r=-1e9;"
+                + "L.forEach(function(x){t=Math.min(t,x[1].top);u=Math.max(u,x[1].bottom);"
+                + "l=Math.min(l,x[1].left);r=Math.max(r,x[1].right);});"
+                + "return{t:t,h:u-t,l:l,w:r-l};}"
+                // With a sized <video>, measure the picture itself (allowing
+                // for a letterbox via its real resolution).
+                + "var cl,ct,cw,ch,rv=p.getBoundingClientRect();"
+                + "if(rv.width>=10&&rv.height>=10){cl=rv.left;ct=rv.top;cw=rv.width;ch=rv.height;"
+                + "var vw=p.videoWidth,vh=p.videoHeight;"
+                + "if(vw&&vh){var k=Math.min(cw/vw,ch/vh);var nw=vw*k,nh=vh*k;"
+                + "cl+=(cw-nw)/2;ct+=(ch-nh)/2;cw=nw;ch=nh;}}"
+                + "else{var L=layers();if(!L.length)return;var S=span(L);"
+                // Zeroing the page's side padding widened the player, but Vimeo
+                // had fixed its height in pixels, leaving a band below the
+                // picture. Give the layers that share the player's height the
+                // frame's 16:9 height (a few tries each, so it can't thrash).
+                + "if(Math.abs(S.h-TH)>1.5){L.forEach(function(x){"
+                + "if(Math.abs(x[1].height-S.h)<1.5&&(x[0].__eq||0)<3){x[0].__eq=(x[0].__eq||0)+1;"
+                + "x[0].style.setProperty('height',TH+'px','important');"
+                + "x[0].style.setProperty('max-height','none','important');}});"
+                + "window.__acimEq=(window.__acimEq||0)+1;L=layers();if(!L.length)return;S=span(L);}"
+                + "cl=S.l;ct=S.t;cw=S.w;ch=S.h;"
+                + "window.__acimS=Math.round(cl)+','+Math.round(ct)+' '+Math.round(cw)+'x'"
+                + "+Math.round(ch)+' eq'+(window.__acimEq||0)+' L'+L.length;}"
+                + "if(cw<10||ch<10)return;"
+                // Cover the frame, with a hair of overscan so rounding can't
+                // leave a one-pixel line at an edge.
+                + "var sc=W/cw;"
+                + "if(okH)sc=Math.max(sc,H/ch);"
+                + "sc*=1.01;"
+                + "var tx=-cl*sc+(W-cw*sc)/2,ty=-ct*sc+(H-ch*sc)/2;"
+                + "if(!okH)ty=-ct*sc;"
+                + "if(Math.abs(sc-1.01)<0.002&&Math.abs(cl)<1&&Math.abs(ct)<1&&!okH)return;"
+                + "b.style.transform='translate('+tx+'px,'+ty+'px) scale('+sc+')';"
+                + "}catch(e){window.__acimErr=String(e);}"
+                + "finally{if(window.__acimDbg)window.__acimDbg();}};"
+                + "window.addEventListener('resize',window.__acimDoFit);"
+                + "document.addEventListener('fullscreenchange',window.__acimDoFit);"
+                + "try{p.addEventListener('loadedmetadata',window.__acimDoFit);}catch(e){}"
+                + "try{new ResizeObserver(window.__acimDoFit).observe(document.body);}catch(e){}"
+                + "setInterval(window.__acimDoFit,700);}"
+                + "if(window.__acimDoFit)window.__acimDoFit();"
                 + "if(r.width>=10&&r.height>=10){"
                 + "function over(el){var b=el.getBoundingClientRect();"
                 + "return b.width>0&&b.height>0&&b.left<r.right&&b.right>r.left"
@@ -1082,72 +1176,6 @@ public class MainActivity extends Activity implements Playback.Controller {
                 + "q=q.parentNode;}"
                 + "document.body.style.margin='0';"
                 + "document.documentElement.style.background='#000';"
-                // Padding can't always be zeroed away (the player may be sized
-                // by the page itself), so finish by scaling the whole page until
-                // the picture — not the element, which can hold a letterbox —
-                // fills the frame edge to edge. Measured with the transform
-                // cleared, so it's safe to re-run; kept right on resize.
-                + "if(!window.__acimFit){window.__acimFit=true;"
-                // The picture can also be inset INSIDE the player element (a
-                // contained poster or letterboxed video), which scaling the
-                // element can't reach. Have the picture itself cover its box.
-                + "try{var cv=document.createElement('style');"
-                + "cv.textContent='video,[class*=preview] img,[class*=poster] img,img.vp-preview"
-                + "{object-fit:cover!important}[class*=preview],[class*=poster]"
-                + "{background-size:cover!important}';"
-                + "document.head.appendChild(cv);}catch(e){}"
-                // TEMPORARY diagnostics: a small readout of the player's
-                // measurements, to find out why the picture isn't filling the
-                // frame on the real page. Remove once that's fixed.
-                + "window.__acimDbg=function(){try{"
-                + "var o=document.getElementById('__acimdbg');"
-                + "if(!o){o=document.createElement('div');o.id='__acimdbg';"
-                + "o.style.cssText='position:fixed;left:0;top:0;z-index:2147483647;"
-                + "background:rgba(0,0,0,.8);color:#7f7;font:9px/1.2 monospace;"
-                + "padding:2px;pointer-events:none;white-space:pre';"
-                + "document.documentElement.appendChild(o);}"
-                + "var r=p.getBoundingClientRect(),n=window.__acimN||0;"
-                + "var t='n'+n+' W'+innerWidth+'x'+innerHeight+' dpr'+devicePixelRatio"
-                + "+' err:'+(window.__acimErr||'-')+'\\n'"
-                + "+'V '+Math.round(r.left)+','+Math.round(r.top)+' '+Math.round(r.width)"
-                + "+'x'+Math.round(r.height)+' vid'+p.videoWidth+'x'+p.videoHeight"
-                + "+' tf:'+document.body.style.transform+'\\n';"
-                + "var q=p;for(var i=0;i<9&&q&&q!==document.documentElement;i++){"
-                + "var b=q.getBoundingClientRect(),cs=getComputedStyle(q);"
-                + "t+=q.tagName+'.'+String(q.className||'').slice(0,20)+' '"
-                + "+Math.round(b.left)+','+Math.round(b.top)+' '+Math.round(b.width)+'x'"
-                + "+Math.round(b.height)+' p'+cs.paddingLeft+' '+cs.position+'\\n';"
-                + "q=q.parentNode;}"
-                + "o.textContent=t;}catch(e){}};"
-                + "window.__acimDoFit=function(){window.__acimN=(window.__acimN||0)+1;try{"
-                + "var b=document.body,d=document.documentElement;"
-                + "b.style.transformOrigin='0 0';d.style.overflow='hidden';"
-                + "b.style.transform='none';"
-                + "if(document.fullscreenElement)return;"
-                + "var r=p.getBoundingClientRect();"
-                + "var cl=r.left,ct=r.top,cw=r.width,ch=r.height;"
-                + "var vw=p.videoWidth,vh=p.videoHeight;"
-                + "if(vw&&vh){var k=Math.min(r.width/vw,r.height/vh);"
-                + "cw=vw*k;ch=vh*k;cl=r.left+(r.width-cw)/2;ct=r.top+(r.height-ch)/2;}"
-                + "if(cw<10||ch<10)return;"
-                // Cover the frame, with a hair of overscan so rounding can't
-                // leave a one-pixel line at an edge. The height only counts once
-                // the box is at its 16:9 shape (it is briefly taller on first
-                // layout, which would otherwise zoom far too much).
-                + "var W=window.innerWidth,H=window.innerHeight;"
-                + "var sc=W/cw;"
-                + "if(Math.abs(H/W-0.5625)<0.05)sc=Math.max(sc,H/ch);"
-                + "sc*=1.01;"
-                + "var tx=-cl*sc+(W-cw*sc)/2,ty=-ct*sc+(H-ch*sc)/2;"
-                + "if(Math.abs(H/W-0.5625)>=0.05)ty=-ct*sc;"
-                + "b.style.transform='translate('+tx+'px,'+ty+'px) scale('+sc+')';"
-                + "}catch(e){window.__acimErr=String(e);}"
-                + "finally{if(window.__acimDbg)window.__acimDbg();}};"
-                + "window.addEventListener('resize',window.__acimDoFit);"
-                + "document.addEventListener('fullscreenchange',window.__acimDoFit);"
-                + "try{p.addEventListener('loadedmetadata',window.__acimDoFit);}catch(e){}"
-                + "try{new ResizeObserver(window.__acimDoFit).observe(p);}catch(e){}}"
-                + "if(window.__acimDoFit)window.__acimDoFit();"
                 + "window.scrollTo(0,0);"
                 + "seen++;"
                 + "var sig=Math.round(r.width)+'x'+Math.round(r.height)+':'"
