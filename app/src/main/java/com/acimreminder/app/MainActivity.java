@@ -1099,9 +1099,17 @@ public class MainActivity extends Activity implements Playback.Controller {
                 + "if(vw&&vh){var k=Math.min(r.width/vw,r.height/vh);"
                 + "cw=vw*k;ch=vh*k;cl=r.left+(r.width-cw)/2;ct=r.top+(r.height-ch)/2;}"
                 + "if(cw<10||ch<10)return;"
-                + "var sc=window.innerWidth/cw;"
-                + "if(Math.abs(sc-1)<0.005&&Math.abs(cl)<1&&Math.abs(ct)<1)return;"
-                + "b.style.transform='translate('+(-cl*sc)+'px,'+(-ct*sc)+'px) scale('+sc+')';"
+                // Cover the frame, with a hair of overscan so rounding can't
+                // leave a one-pixel line at an edge. The height only counts once
+                // the box is at its 16:9 shape (it is briefly taller on first
+                // layout, which would otherwise zoom far too much).
+                + "var W=window.innerWidth,H=window.innerHeight;"
+                + "var sc=W/cw;"
+                + "if(Math.abs(H/W-0.5625)<0.05)sc=Math.max(sc,H/ch);"
+                + "sc*=1.01;"
+                + "var tx=-cl*sc+(W-cw*sc)/2,ty=-ct*sc+(H-ch*sc)/2;"
+                + "if(Math.abs(H/W-0.5625)>=0.05)ty=-ct*sc;"
+                + "b.style.transform='translate('+tx+'px,'+ty+'px) scale('+sc+')';"
                 + "}catch(e){}};"
                 + "window.addEventListener('resize',window.__acimDoFit);"
                 + "document.addEventListener('fullscreenchange',window.__acimDoFit);"
