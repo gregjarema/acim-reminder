@@ -1,0 +1,39 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Video framing sample</title>
+<style>
+body{margin:0;background:#f4f6f8;font-family:sans-serif}
+.hdr{height:48px;background:#fff;border-bottom:1px solid #ddd;display:flex;align-items:center;padding:0 16px}
+.card{max-width:640px;margin:20px auto;padding:24px;background:#fff;border:1px solid #ddd;border-radius:8px;box-shadow:0 2px 8px #0003}
+.ratio{position:relative;padding-top:56.25%;background:#000}
+.ratio video{position:absolute;inset:0;width:100%;height:100%;background:#222}
+.controls{position:absolute;left:0;right:0;bottom:0;height:34px;background:#000a;color:#fff;font-size:13px;display:flex;align-items:center;padding:0 10px}
+#bar{position:fixed;left:0;right:0;bottom:0;padding:10px;background:#fffd;text-align:center;z-index:99999}
+button{font-size:16px;padding:10px 18px}
+</style></head><body>
+<div class="hdr">Sample "Vimeo" watch page (header, card, shadow)</div>
+<div class="card">
+  <div class="ratio">
+    <video id="v" autoplay muted playsinline></video>
+    <div class="controls">&#9654; &nbsp; 01:49 &nbsp; ----------o------------</div>
+  </div>
+  <h2>Lesson title under the player</h2><p>Some text that the app hides.</p>
+</div>
+<div id="bar"><button onclick="applyFrame()">Apply the app's framing</button>
+ <button onclick="location.reload()">Reset</button>
+ <div id="msg" style="font-size:12px;margin-top:6px">Before: the picture is inset with a pale frame.</div></div>
+<script>
+// A 16:9 test pattern with a coloured edge: if any edge colour is missing, the frame is cropping it.
+var c=document.createElement('canvas');c.width=1280;c.height=720;var x=c.getContext('2d'),t=0;
+function draw(){x.fillStyle='#235';x.fillRect(0,0,1280,720);
+ x.fillStyle='#f5c542';x.fillRect(0,0,1280,14);x.fillRect(0,706,1280,14);
+ x.fillStyle='#e8553d';x.fillRect(0,0,14,720);x.fillRect(1266,0,14,720);
+ x.fillStyle='#fff';x.font='64px sans-serif';x.fillText('Video picture 16:9',380,340);
+ x.beginPath();x.arc(640+Math.cos(t)*300,460+Math.sin(t)*60,30,0,7);x.fill();t+=.05;requestAnimationFrame(draw);}
+draw();document.getElementById('v').srcObject=c.captureStream(30);
+var JS_FRAME="(function(){if(window.__acimFraming)return;window.__acimFraming=true;var lastSig='',stable=0,seen=0,tries=0,done=false;function signal(){if(done)return;done=true;try{AndroidPlayback.onFramed();}catch(e){}}function strip(){try{var p=document.querySelector('video')||document.querySelector('iframe[src*=\"player.vimeo.com\"]');if(p){var r=p.getBoundingClientRect();if(r.width>=10&&r.height>=10){function over(el){var b=el.getBoundingClientRect();return b.width>0&&b.height>0&&b.left<r.right&&b.right>r.left&&b.top<r.bottom&&b.bottom>r.top;}function keep(el){return over(el)||/control|ui|button|play|volume/i.test(String(el.className||''));}var n=p;while(n&&n!==document.body){var par=n.parentNode;if(par&&par.children){Array.prototype.forEach.call(par.children,function(s){if(s!==n&&!keep(s))s.style.display='none';});}n=par;}function vr(){return p.getBoundingClientRect();}function tryCss(el,prop,val,grow){var o=el.style[prop];var b=vr();el.style[prop]=val;var a=vr();var ok=grow?a.width>b.width+0.5:(a.width>=b.width-0.5&&a.height>=b.height-0.5);if(!ok)el.style[prop]=o;}var q=p.parentNode;while(q&&q.nodeType===1){var st=q.style;st.background='#000';st.boxShadow='none';st.border='0';st.borderRadius='0';if(q!==document.documentElement&&!q.__acimFlat){q.__acimFlat=1;['paddingLeft','paddingRight','paddingTop','paddingBottom','marginTop','marginBottom'].forEach(function(k){tryCss(q,k,'0',false);});tryCss(q,'maxWidth','none',true);}q=q.parentNode;}document.body.style.margin='0';document.documentElement.style.background='#000';if(!window.__acimFit){window.__acimFit=true;window.__acimDoFit=function(){try{var b=document.body,d=document.documentElement;b.style.transformOrigin='0 0';d.style.overflow='hidden';b.style.transform='none';if(document.fullscreenElement)return;var r=p.getBoundingClientRect();var cl=r.left,ct=r.top,cw=r.width,ch=r.height;var vw=p.videoWidth,vh=p.videoHeight;if(vw&&vh){var k=Math.min(r.width/vw,r.height/vh);cw=vw*k;ch=vh*k;cl=r.left+(r.width-cw)/2;ct=r.top+(r.height-ch)/2;}if(cw<10||ch<10)return;var W=window.innerWidth,H=window.innerHeight;var sc=W/cw;if(Math.abs(H/W-0.5625)<0.05)sc=Math.max(sc,H/ch);sc*=1.01;var tx=-cl*sc+(W-cw*sc)/2,ty=-ct*sc+(H-ch*sc)/2;if(Math.abs(H/W-0.5625)>=0.05)ty=-ct*sc;b.style.transform='translate('+tx+'px,'+ty+'px) scale('+sc+')';}catch(e){}};window.addEventListener('resize',window.__acimDoFit);document.addEventListener('fullscreenchange',window.__acimDoFit);try{p.addEventListener('loadedmetadata',window.__acimDoFit);}catch(e){}try{new ResizeObserver(window.__acimDoFit).observe(p);}catch(e){}}if(window.__acimDoFit)window.__acimDoFit();window.scrollTo(0,0);seen++;var sig=Math.round(r.width)+'x'+Math.round(r.height)+':'+document.getElementsByTagName('*').length;if(sig===lastSig)stable++;else{stable=0;lastSig=sig;}if(stable>=2||seen>=12){signal();return;}}}}catch(e){}if(tries++<30)setTimeout(strip,200);else signal();}strip();})();";
+function applyFrame(){window.__acimFraming=false;window.__acimFit=false;
+ var s=document.createElement('script');
+ s.textContent='var AndroidPlayback={onFramed:function(){document.getElementById("msg").textContent="Framed: picture fills the whole width."}};'+JS_FRAME;
+ document.body.appendChild(s);}
+</script></body></html>
