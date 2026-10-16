@@ -9,7 +9,9 @@ import android.content.ClipboardManager;
 import android.content.ComponentName;
 import android.content.Intent;
 import android.content.SharedPreferences;
+import android.graphics.Bitmap;
 import android.graphics.Color;
+import android.graphics.Rect;
 import android.graphics.Typeface;
 import android.os.Bundle;
 import android.os.Handler;
@@ -28,6 +30,7 @@ import android.view.ActionMode;
 import android.view.LayoutInflater;
 import android.view.Menu;
 import android.view.MenuItem;
+import android.view.PixelCopy;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.animation.Interpolator;
@@ -96,6 +99,8 @@ public class MainActivity extends Activity implements Playback.Controller {
     /** Whichever player was last started, or null. What the media buttons and
      *  the playback notification drive. */
     private WebView activePlayer;
+    // What the screen-measuring backup last found, for the diagnostics report.
+    private String lastSnapInfo = "not run";
     private FrameLayout fullscreenContainer;
     private View fullscreenView;
     private WebChromeClient.CustomViewCallback fullscreenCallback;
@@ -292,6 +297,8 @@ public class MainActivity extends Activity implements Playback.Controller {
         boolean changed = tab != previous;
         selectedTab = tab;
         prefs().edit().putInt(KEY_TAB, tab).apply();
+        if (changed && tab == TAB_TEXT) snapFitSoon(textWebView, R.id.textVideoBox, 900, 2200);
+        if (changed && tab == TAB_WORKBOOK) snapFitSoon(webView, R.id.videoBox, 900, 2200);
 
         // One pane fades out as the next fades in — and the incoming pane
         // slides a touch in the direction of travel, so moving right feels like
@@ -633,7 +640,9 @@ public class MainActivity extends Activity implements Playback.Controller {
         final String head = "tab " + (selectedTab == TAB_TEXT ? "text" : "workbook")
                 + "  box " + box.getWidth() + "x" + box.getHeight()
                 + "  webview " + player.getWidth() + "x" + player.getHeight()
-                + "  density " + getResources().getDisplayMetrics().density + "\n";
+                + "  density " + getResources().getDisplayMetrics().density
+                + "  scale " + player.getScaleX() + " tx " + player.getTranslationX()
+                + " ty " + player.getTranslationY() + "\nscreen check: " + lastSnapInfo + "\n";
         player.evaluateJavascript(
                 ""
                   + "(function(){try{"
@@ -667,6 +676,113 @@ public class MainActivity extends Activity implements Playback.Controller {
                     }
                     Toast.makeText(this, "Video diagnostics copied.", Toast.LENGTH_SHORT).show();
                 });
+    }
+
+    // ------------------------------------------------- screen-measured fit
+
+    /**
+     * Backup for the page-side fit, which has to guess how Vimeo lays its player
+     * out. This looks at the screen instead: once the video box is visible it
+     * copies the box's pixels, finds the rectangle that isn't black, and — if
+     * that falls short of the box — scales the WebView so the picture fills it.
+     * It measures the result of whatever the page did, so it only corrects what
+     * is still left over, and does nothing when the picture already fills.
+     */
+    private void snapFitSoon(final WebView player, final int boxId, long... delaysMs) {
+        for (long d : delaysMs) {
+            mainHandler.postDelayed(() -> snapFit(player, boxId), d);
+        }
+    }
+
+    private void snapFit(final WebView player, int boxId) {
+        final View box = findViewById(boxId);
+        if (box == null || !box.isShown() || box.getAlpha() < 0.99f || fullscreenView != null) return;
+        if (findViewById(R.id.loadingOverlay).getVisibility() == View.VISIBLE) return;
+        final int bw = box.getWidth(), bh = box.getHeight();
+        if (bw < 50 || bh < 30) return;
+        int[] loc = new int[2];
+        box.getLocationInWindow(loc);
+        View decor = getWindow().getDecorView();
+        Rect src = new Rect(loc[0], loc[1], loc[0] + bw, loc[1] + bh);
+        // Only measure when the whole box is on screen; a half-scrolled one
+        // would read as a short picture.
+        if (src.left < 0 || src.top < 0 || src.right > decor.getWidth() || src.bottom > decor.getHeight()) return;
+        final Bitmap bmp = Bitmap.createBitmap(bw, bh, Bitmap.Config.ARGB_8888);
+        try {
+            PixelCopy.request(getWindow(), src, bmp, result -> {
+                if (result == PixelCopy.SUCCESS) {
+                    mainHandler.post(() -> applySnap(player, bmp));
+                } else {
+                    lastSnapInfo = "copy failed (" + result + ")";
+                    bmp.recycle();
+                }
+            }, mainHandler);
+        } catch (IllegalArgumentException e) {
+            lastSnapInfo = "copy refused: " + e.getMessage();
+            bmp.recycle();
+        }
+    }
+
+    private static boolean lit(int px) {
+        return ((px >> 16) & 0xFF) > 14 || ((px >> 8) & 0xFF) > 14 || (px & 0xFF) > 14;
+    }
+
+    private void applySnap(WebView player, Bitmap bmp) {
+        final int w = bmp.getWidth(), h = bmp.getHeight();
+        final int[] px = new int[w * h];
+        bmp.getPixels(px, 0, w, 0, 0, w, h);
+        bmp.recycle();
+
+        // Rows and columns count as picture when a few percent of their pixels
+        // aren't black; the black the page and box paint around it is pure.
+        final int stepX = Math.max(1, w / 240), stepY = 2;
+        int top = -1, bottom = -1;
+        for (int y = 0; y < h; y += stepY) {
+            int n = 0, tot = 0;
+            for (int x = 0; x < w; x += stepX) {
+                tot++;
+                if (lit(px[y * w + x])) n++;
+            }
+            if (n * 100 >= tot * 4) {
+                if (top < 0) top = y;
+                bottom = y + stepY - 1;
+            }
+        }
+        if (top < 0) { lastSnapInfo = "all black"; return; }
+        int left = -1, right = -1;
+        for (int x = 0; x < w; x++) {
+            int n = 0, tot = 0;
+            for (int y = top; y <= bottom && y < h; y += stepY) {
+                tot++;
+                if (lit(px[y * w + x])) n++;
+            }
+            if (n * 100 >= tot * 4) {
+                if (left < 0) left = x;
+                right = x;
+            }
+        }
+        if (left < 0) { lastSnapInfo = "no columns"; return; }
+
+        final float cl = left, ct = top, cw = right - left + 1, ch = bottom - top + 1;
+        lastSnapInfo = "picture " + left + "," + top + " " + (int) cw + "x" + (int) ch
+                + " in box " + w + "x" + h;
+        if (cw < w * 0.5f || ch < h * 0.5f) { lastSnapInfo += " (too small, left alone)"; return; }
+        if (cw >= w - 2 && ch >= h - 2) { lastSnapInfo += " (already fills)"; return; }
+        final float s = Math.max(w / cw, h / ch) * 1.01f;
+        if (s > 1.25f) { lastSnapInfo += " (scale " + s + " too large, left alone)"; return; }
+
+        // Compose with whatever the WebView already carries. Both transforms
+        // act about the box's top-left corner, which is the WebView's too.
+        final float s0 = player.getScaleX(), t0x = player.getTranslationX(),
+                t0y = player.getTranslationY();
+        final float tx = (w - cw * s) / 2f - cl * s, ty = (h - ch * s) / 2f - ct * s;
+        player.setPivotX(0f);
+        player.setPivotY(0f);
+        player.setScaleX(s0 * s);
+        player.setScaleY(s0 * s);
+        player.setTranslationX(s * t0x + tx);
+        player.setTranslationY(s * t0y + ty);
+        lastSnapInfo += " -> scaled x" + s;
     }
 
     private static int vis(boolean shown) {
@@ -925,6 +1041,9 @@ public class MainActivity extends Activity implements Playback.Controller {
             // Don't start the media service here — it comes up in onVideoPlay
             // when the video actually plays, so a preloaded frame you never
             // watch doesn't post a media notification.
+            // A new page starts unscaled; the screen check below re-measures it.
+            player.setScaleX(1f); player.setScaleY(1f);
+            player.setTranslationX(0f); player.setTranslationY(0f);
             player.onResume();
             player.loadUrl(url);
 
@@ -959,6 +1078,7 @@ public class MainActivity extends Activity implements Playback.Controller {
         box.animate().cancel();
         box.animate().alpha(1f).setDuration(ANIM_IN).setInterpolator(ease).start();
         if (boxId == splashBoxId) dismissSplash();   // the launch video is ready
+        snapFitSoon(boxId == R.id.textVideoBox ? textWebView : webView, boxId, 700, 1800, 3500);
     }
 
     /** Hold the launch veil until the first video frames, then lift it. */
@@ -1013,6 +1133,7 @@ public class MainActivity extends Activity implements Playback.Controller {
         // the window so the lesson can be read along with it.
         setPinnedBox(player == textWebView ? R.id.textVideoBox : R.id.videoBox);
         boolean isText = player == textWebView;
+        snapFitSoon(player, isText ? R.id.textVideoBox : R.id.videoBox, 1200, 2800);
         TextDay day = TextDays.current(this);
         startPlaybackService(isText
                 ? (day == null ? "" : day.shortTitle())
