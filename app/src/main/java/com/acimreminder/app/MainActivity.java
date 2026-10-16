@@ -1081,33 +1081,44 @@ public class MainActivity extends Activity implements Playback.Controller {
                 + "L.forEach(function(x){t=Math.min(t,x[1].top);u=Math.max(u,x[1].bottom);"
                 + "l=Math.min(l,x[1].left);r=Math.max(r,x[1].right);});"
                 + "return{t:t,h:u-t,l:l,w:r-l};}"
-                // With a sized <video>, measure the picture itself (allowing
-                // for a letterbox via its real resolution).
-                + "var cl,ct,cw,ch,rv=p.getBoundingClientRect();"
-                + "if(rv.width>=10&&rv.height>=10){cl=rv.left;ct=rv.top;cw=rv.width;ch=rv.height;"
-                + "var vw=p.videoWidth,vh=p.videoHeight;"
-                + "if(vw&&vh){var k=Math.min(cw/vw,ch/vh);var nw=vw*k,nh=vh*k;"
+                // Find the picture by what it IS, not by class names: the wide,
+                // tall <video>/<img>/<canvas> elements and anything painted with a
+                // background image (the title card). Several <video> elements can
+                // exist and only one is the sized one, so look at them all.
+                + "function pics(){var out=[],all=b.querySelectorAll('*');"
+                + "for(var i=0;i<all.length;i++){var e=all[i],c=getComputedStyle(e);"
+                + "if(c.display==='none'||c.visibility==='hidden'||c.opacity==='0')continue;"
+                + "var tg=e.tagName;"
+                + "if(!/^(VIDEO|IMG|CANVAS|PICTURE)$/.test(tg)&&c.backgroundImage==='none')continue;"
+                + "var q=e.getBoundingClientRect();"
+                + "if(q.width>=W*0.9&&q.height>=W*0.3)out.push([e,q]);}return out;}"
+                + "var cl,ct,cw,ch,P=pics();"
+                + "if(P.length){var PS=span(P);"
+                // The picture can end short of the frame (Vimeo sets its height
+                // in pixels), leaving a band under it. Stretch the picture
+                // elements to the frame's 16:9 height and have them cover it.
+                + "if(Math.abs(PS.h-TH)>1.5){P.forEach(function(x){"
+                + "if((x[0].__eq||0)<3){x[0].__eq=(x[0].__eq||0)+1;"
+                + "x[0].style.setProperty('height',TH+'px','important');"
+                + "x[0].style.setProperty('max-height','none','important');"
+                + "x[0].style.setProperty('object-fit','cover','important');"
+                + "x[0].style.setProperty('background-size','cover','important');}});"
+                + "P=pics();if(P.length)PS=span(P);}"
+                + "cl=PS.l;ct=PS.t;cw=PS.w;ch=PS.h;}"
+                + "else{var bv=null,vs=b.querySelectorAll('video');"
+                + "for(var vi=0;vi<vs.length;vi++){var vq=vs[vi].getBoundingClientRect();"
+                + "if(vq.width>=10&&vq.height>=10&&(!bv||vq.width*vq.height>bv.w*bv.h))"
+                + "bv={e:vs[vi],l:vq.left,t:vq.top,w:vq.width,h:vq.height};}"
+                + "if(bv){cl=bv.l;ct=bv.t;cw=bv.w;ch=bv.h;var vw=bv.e.videoWidth,vh=bv.e.videoHeight;"
+                + "if(vw&&vh){var k=Math.min(cw/vw,ch/vh),nw=vw*k,nh=vh*k;"
                 + "cl+=(cw-nw)/2;ct+=(ch-nh)/2;cw=nw;ch=nh;}}"
                 + "else{var L=layers();if(!L.length)return;var S=span(L);"
-                // Zeroing the page's side padding widened the player, but Vimeo
-                // had fixed its height in pixels, leaving a band below the
-                // picture. Give the layers that share the player's height the
-                // frame's 16:9 height (a few tries each, so it can't thrash).
                 + "if(Math.abs(S.h-TH)>1.5){L.forEach(function(x){"
                 + "if(Math.abs(x[1].height-S.h)<1.5&&(x[0].__eq||0)<3){x[0].__eq=(x[0].__eq||0)+1;"
                 + "x[0].style.setProperty('height',TH+'px','important');"
                 + "x[0].style.setProperty('max-height','none','important');}});"
-                + "window.__acimEq=(window.__acimEq||0)+1;L=layers();if(!L.length)return;S=span(L);}"
-                // The title card is its own layer with its own fixed height, so
-                // it can fall short of the frame even when the rest fills it.
-                + "var po=b.querySelectorAll('[class*=preview],[class*=poster]');"
-                + "for(var j=0;j<po.length;j++){var pe=po[j],pq=pe.getBoundingClientRect();"
-                + "if(pq.width>=W*0.9&&Math.abs(pq.height-TH)>1.5&&(pe.__eq||0)<3){"
-                + "pe.__eq=(pe.__eq||0)+1;"
-                + "pe.style.setProperty('height',TH+'px','important');"
-                + "pe.style.setProperty('max-height','none','important');}}"
-                + "cl=S.l;ct=S.t;cw=S.w;ch=S.h;"
-                + "}"
+                + "L=layers();if(!L.length)return;S=span(L);}"
+                + "cl=S.l;ct=S.t;cw=S.w;ch=S.h;}}"
                 + "if(cw<10||ch<10)return;"
                 // Cover the frame, with a hair of overscan so rounding can't
                 // leave a one-pixel line at an edge.
