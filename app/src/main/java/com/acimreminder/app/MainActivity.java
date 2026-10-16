@@ -1068,6 +1068,15 @@ public class MainActivity extends Activity implements Playback.Controller {
                 + "b.style.transform='none';"
                 + "if(document.fullscreenElement)return;"
                 + "var W=window.innerWidth,H=window.innerHeight;"
+                // A player preloaded in a hidden tab has no size yet (the Text
+                // tab's is). Measuring then would size everything to nothing and
+                // scale the page to zero, so wait until it has a real size.
+                + "if(W<50||H<30)return;"
+                // Fixes already made are remembered per size, so a change of size
+                // (the tab being shown) lets them be made again.
+                + "window.__acimEP=(window.__acimW===W)?(window.__acimEP||1):((window.__acimEP||0)+1);"
+                + "window.__acimW=W;var EP=window.__acimEP;"
+                + "function can(e){if(e.__ee!==EP){e.__ee=EP;e.__eq=0;}return e.__eq<3;}"
                 + "var okH=Math.abs(H/W-0.5625)<0.05,TH=okH?H:W*0.5625;"
                 // The <video> is often 0x0 (it only exists once you press play;
                 // the title card is a separate layer), so measure the player's
@@ -1090,7 +1099,7 @@ public class MainActivity extends Activity implements Playback.Controller {
                 // ancestors that fall short of the frame as well.
                 + "function grow(e){var a=e.parentElement;"
                 + "while(a&&a!==b&&a!==d){var q=a.getBoundingClientRect();"
-                + "if(q.width>=W*0.9&&q.height>=W*0.2&&q.height<TH-1.5&&(a.__eq||0)<3){"
+                + "if(q.width>=W*0.9&&q.height>=W*0.2&&q.height<TH-1.5&&can(a)){"
                 + "a.__eq=(a.__eq||0)+1;"
                 + "a.style.setProperty('height',TH+'px','important');"
                 + "a.style.setProperty('min-height',TH+'px','important');"
@@ -1109,7 +1118,7 @@ public class MainActivity extends Activity implements Playback.Controller {
                 // in pixels), leaving a band under it. Stretch the picture
                 // elements to the frame's 16:9 height and have them cover it.
                 + "if(Math.abs(PS.h-TH)>1.5){P.forEach(function(x){"
-                + "if((x[0].__eq||0)<3){x[0].__eq=(x[0].__eq||0)+1;"
+                + "if(can(x[0])){x[0].__eq=(x[0].__eq||0)+1;"
                 + "x[0].style.setProperty('height',TH+'px','important');"
                 + "x[0].style.setProperty('max-height','none','important');"
                 + "x[0].style.setProperty('object-fit','cover','important');"
@@ -1126,7 +1135,7 @@ public class MainActivity extends Activity implements Playback.Controller {
                 + "cl+=(cw-nw)/2;ct+=(ch-nh)/2;cw=nw;ch=nh;}}"
                 + "else{var L=layers();if(!L.length)return;var S=span(L);"
                 + "if(Math.abs(S.h-TH)>1.5){L.forEach(function(x){"
-                + "if(Math.abs(x[1].height-S.h)<1.5&&(x[0].__eq||0)<3){x[0].__eq=(x[0].__eq||0)+1;"
+                + "if(Math.abs(x[1].height-S.h)<1.5&&can(x[0])){x[0].__eq=(x[0].__eq||0)+1;"
                 + "x[0].style.setProperty('height',TH+'px','important');"
                 + "x[0].style.setProperty('max-height','none','important');}"
                 + "grow(x[0]);});"
