@@ -895,6 +895,12 @@ public class MainActivity extends Activity implements Playback.Controller {
         WebView view = findViewById(webViewId);
         ProgressBar progress = findViewById(progressId);
 
+        // The page behind the player is taller than the frame (the Text tab's
+        // carries the whole article), so the WebView would flash a scrollbar
+        // over the right edge of the picture.
+        view.setVerticalScrollBarEnabled(false);
+        view.setHorizontalScrollBarEnabled(false);
+        view.setOverScrollMode(View.OVER_SCROLL_NEVER);
         WebSettings settings = view.getSettings();
         settings.setJavaScriptEnabled(true);
         settings.setDomStorageEnabled(true);
