@@ -561,12 +561,14 @@ public class MainActivity extends Activity implements Playback.Controller {
 
     private void showOverflow(View anchor) {
         android.widget.PopupMenu menu = new android.widget.PopupMenu(popupContext(), anchor);
-        final int JUMP = 1, WALLPAPER = 2, COPY = 3, DARK_WP = 4, DND = 5, HOURS = 6, REMEMBER = 7, MEDREM = 8;
+        final int JUMP = 1, WALLPAPER = 2, COPY = 3, DARK_WP = 4, DND = 5, HOURS = 6, REMEMBER = 7, MEDREM = 8, DIAG = 9;
 
         if (selectedTab == TAB_WORKBOOK || selectedTab == TAB_TEXT) {
             menu.getMenu().add(Menu.NONE, JUMP, 0,
                     selectedTab == TAB_TEXT ? "Jump to day…" : "Jump to lesson…");
             menu.getMenu().add(Menu.NONE, WALLPAPER, 1, "Use the live wallpaper…");
+            // For tracking down how the video frame is laid out on the real page.
+            menu.getMenu().add(Menu.NONE, DIAG, 10, "Copy video diagnostics");
             // Checkable escape hatch for phones that paint the lock screen's
             // date and notifications white no matter what the wallpaper reports:
             // forcing the dark paper gives that white text a dark ground.
@@ -612,10 +614,59 @@ public class MainActivity extends Activity implements Playback.Controller {
                 case DND: toggleDnd(!item.isChecked()); return true;
                 case COPY: copyAllSaved(); return true;
                 case HOURS: showReminderHoursDialog(); return true;
+                case DIAG: copyVideoDiagnostics(); return true;
                 default: return false;
             }
         });
         menu.show();
+    }
+
+    /**
+     * Copy a report of how the current tab's video page is laid out (the wide
+     * elements, the videos, their sizes and clipping) to the clipboard, so the
+     * real structure can be read instead of guessed at. Nothing is shown on the
+     * video itself.
+     */
+    private void copyVideoDiagnostics() {
+        final WebView player = selectedTab == TAB_TEXT ? textWebView : webView;
+        final View box = findViewById(selectedTab == TAB_TEXT ? R.id.textVideoBox : R.id.videoBox);
+        final String head = "tab " + (selectedTab == TAB_TEXT ? "text" : "workbook")
+                + "  box " + box.getWidth() + "x" + box.getHeight()
+                + "  webview " + player.getWidth() + "x" + player.getHeight()
+                + "  density " + getResources().getDisplayMetrics().density + "\n";
+        player.evaluateJavascript(
+                ""
+                  + "(function(){try{"
+                + "var W=innerWidth,H=innerHeight,o=[];"
+                + "o.push('url '+location.href);"
+                + "o.push('win '+W+'x'+H+' dpr '+devicePixelRatio+' scrollY '+scrollY);"
+                + "o.push('body tf '+document.body.style.transform+' fit n'+(window.__acimN||0)+' err '+(window.__acimErr||'-')+' w'+(window.__acimW||'-'));"
+                + "function d(e){var n=0;while(e&&e!==document.body){n++;e=e.parentElement;}return n;}"
+                + "function sel(e){var c=e.className;return e.tagName.toLowerCase()+(e.id?'#'+e.id:'')+(typeof c==='string'&&c?'.'+c.trim().split(' ').join('.').slice(0,45):'');}"
+                + "var all=document.body.querySelectorAll('*'),cnt=0;"
+                + "for(var i=0;i<all.length&&cnt<160;i++){var e=all[i],c=getComputedStyle(e),q=e.getBoundingClientRect();"
+                + "if(c.display==='none')continue;"
+                + "var media=/^(VIDEO|IMG|CANVAS|IFRAME|PICTURE)$/.test(e.tagName),bg=c.backgroundImage!=='none';"
+                + "if(!(media||bg||(q.width>=W*0.5&&q.height>=10)))continue;"
+                + "cnt++;"
+                + "o.push(new Array(d(e)+1).join(' ')+sel(e)+' ['+Math.round(q.left)+','+Math.round(q.top)+' '+Math.round(q.width)+'x'+Math.round(q.height)+'] '+c.position+' ov:'+c.overflowY+' h:'+c.height+' pad:'+c.paddingTop+'/'+c.paddingBottom+' op:'+c.opacity+(bg?' BGIMG':'')+(c.objectFit!=='fill'?' of:'+c.objectFit:'')+(e.style.height?' sty-h:'+e.style.height:''));}"
+                + "var vs=document.querySelectorAll('video');"
+                + "for(var k=0;k<vs.length;k++){var v=vs[k],r=v.getBoundingClientRect();o.push('VIDEO#'+k+' '+Math.round(r.width)+'x'+Math.round(r.height)+' vid '+v.videoWidth+'x'+v.videoHeight+' ready '+v.readyState+' paused '+v.paused);}"
+                + "return o.join('\\n');}catch(e){return 'diag error '+e;}})()"
+                , value -> {
+                    String text;
+                    try {
+                        Object o = new org.json.JSONTokener(value).nextValue();
+                        text = o == null || o == org.json.JSONObject.NULL ? "(no result)" : o.toString();
+                    } catch (Exception e) {
+                        text = "(could not read the result: " + e + ")";
+                    }
+                    ClipboardManager cm = (ClipboardManager) getSystemService(CLIPBOARD_SERVICE);
+                    if (cm != null) {
+                        cm.setPrimaryClip(ClipData.newPlainText("Video diagnostics", head + text));
+                    }
+                    Toast.makeText(this, "Video diagnostics copied.", Toast.LENGTH_SHORT).show();
+                });
     }
 
     private static int vis(boolean shown) {
