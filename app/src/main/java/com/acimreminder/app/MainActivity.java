@@ -99,6 +99,7 @@ public class MainActivity extends Activity implements Playback.Controller {
     /** Whichever player was last started, or null. What the media buttons and
      *  the playback notification drive. */
     private WebView activePlayer;
+    private WebView fullscreenPlayer;   // the player whose page went fullscreen
     // What the screen-measuring backup last found, for the diagnostics report.
     private String lastSnapInfo = "not run";
     private FrameLayout fullscreenContainer;
@@ -962,6 +963,10 @@ public class MainActivity extends Activity implements Playback.Controller {
                 }
                 fullscreenView = v;
                 fullscreenCallback = callback;
+                fullscreenPlayer = self;
+                // Let the page drop the 16:9 sizing it applies to the frame, so the
+                // picture can fill the whole screen.
+                self.evaluateJavascript("window.__acimFs&&window.__acimFs(true)", null);
                 fullscreenContainer.addView(v, new FrameLayout.LayoutParams(
                         ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
                 fullscreenContainer.setVisibility(View.VISIBLE);
@@ -980,6 +985,10 @@ public class MainActivity extends Activity implements Playback.Controller {
         fullscreenContainer.removeView(fullscreenView);
         fullscreenContainer.setVisibility(View.GONE);
         fullscreenView = null;
+        if (fullscreenPlayer != null) {
+            fullscreenPlayer.evaluateJavascript("window.__acimFs&&window.__acimFs(false)", null);
+            fullscreenPlayer = null;
+        }
         if (fullscreenCallback != null) fullscreenCallback.onCustomViewHidden();
         fullscreenCallback = null;
     }
@@ -1238,13 +1247,23 @@ public class MainActivity extends Activity implements Playback.Controller {
                 + "try{var cv=document.createElement('style');"
                 + "cv.textContent='video,[class*=preview] img,[class*=poster] img,img.vp-preview"
                 + "{object-fit:cover!important}[class*=preview],[class*=poster]"
-                + "{background-size:cover!important}';"
+                + "{background-size:cover!important}"
+                // Sizes this script forces on the player live behind an attribute
+                // and switch off in fullscreen, where the picture has to fill the
+                // whole screen (cover, like a reel) instead of staying 16:9.
+                + "html:not(.acim-fs) [data-acim]{height:var(--acimh)!important;"
+                + "min-height:var(--acimh)!important;max-height:none!important;"
+                + "object-fit:cover!important;background-size:cover!important}';"
                 + "document.head.appendChild(cv);}catch(e){}"
+                + "window.__acimFs=function(on){window.__acimFS=!!on;"
+                + "document.documentElement.classList.toggle('acim-fs',!!on);"
+                + "document.body.style.transform='none';"
+                + "if(!on&&window.__acimDoFit)setTimeout(window.__acimDoFit,300);};"
                 + "window.__acimDoFit=function(){window.__acimN=(window.__acimN||0)+1;try{"
                 + "var b=document.body,d=document.documentElement;"
                 + "b.style.transformOrigin='0 0';d.style.overflow='hidden';"
                 + "b.style.transform='none';"
-                + "if(document.fullscreenElement)return;"
+                + "if(window.__acimFS||document.fullscreenElement||document.webkitFullscreenElement)return;"
                 + "var W=window.innerWidth,H=window.innerHeight;"
                 // A player preloaded in a hidden tab has no size yet (the Text
                 // tab's is). Measuring then would size everything to nothing and
@@ -1275,13 +1294,13 @@ public class MainActivity extends Activity implements Playback.Controller {
                 // A fixed-height, overflow-hidden parent would clip a taller
                 // picture and leave the same band, so grow the chain of wide
                 // ancestors that fall short of the frame as well.
+                + "function mark(e){e.setAttribute('data-acim','1');"
+                + "e.style.setProperty('--acimh',TH+'px');}"
                 + "function grow(e){var a=e.parentElement;"
                 + "while(a&&a!==b&&a!==d){var q=a.getBoundingClientRect();"
                 + "if(q.width>=W*0.9&&q.height>=W*0.2&&q.height<TH-1.5&&can(a)){"
                 + "a.__eq=(a.__eq||0)+1;"
-                + "a.style.setProperty('height',TH+'px','important');"
-                + "a.style.setProperty('min-height',TH+'px','important');"
-                + "a.style.setProperty('max-height','none','important');}"
+                + "mark(a);}"
                 + "a=a.parentElement;}}"
                 + "function pics(){var out=[],all=b.querySelectorAll('*');"
                 + "for(var i=0;i<all.length;i++){var e=all[i],c=getComputedStyle(e);"
@@ -1297,10 +1316,7 @@ public class MainActivity extends Activity implements Playback.Controller {
                 // elements to the frame's 16:9 height and have them cover it.
                 + "if(Math.abs(PS.h-TH)>1.5){P.forEach(function(x){"
                 + "if(can(x[0])){x[0].__eq=(x[0].__eq||0)+1;"
-                + "x[0].style.setProperty('height',TH+'px','important');"
-                + "x[0].style.setProperty('max-height','none','important');"
-                + "x[0].style.setProperty('object-fit','cover','important');"
-                + "x[0].style.setProperty('background-size','cover','important');}"
+                + "mark(x[0]);}"
                 + "grow(x[0]);});"
                 + "P=pics();if(P.length)PS=span(P);}"
                 + "cl=PS.l;ct=PS.t;cw=PS.w;ch=PS.h;}"
@@ -1314,8 +1330,7 @@ public class MainActivity extends Activity implements Playback.Controller {
                 + "else{var L=layers();if(!L.length)return;var S=span(L);"
                 + "if(Math.abs(S.h-TH)>1.5){L.forEach(function(x){"
                 + "if(Math.abs(x[1].height-S.h)<1.5&&can(x[0])){x[0].__eq=(x[0].__eq||0)+1;"
-                + "x[0].style.setProperty('height',TH+'px','important');"
-                + "x[0].style.setProperty('max-height','none','important');}"
+                + "mark(x[0]);}"
                 + "grow(x[0]);});"
                 + "L=layers();if(!L.length)return;S=span(L);}"
                 + "cl=S.l;ct=S.t;cw=S.w;ch=S.h;}}"
