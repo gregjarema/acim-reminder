@@ -1253,7 +1253,12 @@ public class MainActivity extends Activity implements Playback.Controller {
                 // whole screen (cover, like a reel) instead of staying 16:9.
                 + "html:not(.acim-fs) [data-acim]{height:var(--acimh)!important;"
                 + "min-height:var(--acimh)!important;max-height:none!important;"
-                + "object-fit:cover!important;background-size:cover!important}';"
+                + "object-fit:cover!important;background-size:cover!important}"
+                // In fullscreen the picture is stretched to the whole screen
+                // (no crop, no bars), so it ignores its own aspect ratio.
+                + "html.acim-fs video{object-fit:fill!important}"
+                + "html.acim-fs [class*=preview] img,html.acim-fs [class*=poster] img"
+                + "{object-fit:fill!important}';"
                 + "document.head.appendChild(cv);}catch(e){}"
                 + "window.__acimFs=function(on){window.__acimFS=!!on;"
                 + "document.documentElement.classList.toggle('acim-fs',!!on);"
