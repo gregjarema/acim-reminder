@@ -225,7 +225,7 @@ def find_video(src):
     return ""
 
 
-def extract(path):
+def _extract(path):
     number = int(re.search(r'(\d+)', os.path.basename(path)).group(1))
     src = open(path, encoding='utf-8').read()
 
@@ -311,6 +311,33 @@ def extract(path):
 
     return {"number": number, "title": "Lesson " + str(number),
             "phrase": "", "video": find_video(src), "body": "", "_warn": "no lesson label"}
+
+
+# Lessons whose saved email is missing part of the text. Day 201 is the first
+# day of Review VI, but its email carries only the Review VI introduction; the
+# actual lesson, "(181) I trust my brothers...", never made it into the email.
+# Each entry is appended to the parsed body unless it is already there, so
+# re-running over a corrected email will not duplicate it. Text is the Foundation
+# for Inner Peace edition (lessons.acim.org/en/chapters/lesson-201).
+BODY_SUPPLEMENTS = {
+    201: (
+        "(181) <i>I trust my brothers, who are one with me.</i>\n\n"
+        "No one but is my brother. I am blessed with oneness with the universe "
+        "and God, my Father, one Creator of the whole that is my Self, forever "
+        "One with me.\n\n"
+        "<i>I am not a body. I am free.</i>\n\n"
+        "<i>For I am still as God created me.</i>"
+    ),
+}
+
+
+def extract(path):
+    """Parse one lesson email, then patch in any text the email is known to lack."""
+    lesson = _extract(path)
+    extra = BODY_SUPPLEMENTS.get(lesson["number"])
+    if extra and extra not in lesson["body"]:
+        lesson["body"] = (lesson["body"] + "\n\n" + extra).strip()
+    return lesson
 
 
 def extract_welcome(path):
