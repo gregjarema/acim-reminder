@@ -26,3 +26,4 @@ app/signing.jks
 
 # Scratch files the email converter writes while scoring a candidate.
 tools/.score_tmp/
+.acim_org_cache/
