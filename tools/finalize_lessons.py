@@ -19,6 +19,10 @@ For each field (phrase/body/video) we take the first non-empty value in that
 priority order. Concretely: emailed body wins (keeps italics), but if an
 email's video is blank we fall back to the digest's or the existing entry's.
 
+A fourth layer, tools/lesson_overrides.json, holds hand corrections and beats
+all three. Add a fix there rather than editing lessons.json, which a rebuild
+overwrites.
+
 Any gaps in 1..365 are printed at the end. Rerun after fetching more emails
 to extend coverage.
 
@@ -84,8 +88,20 @@ if os.path.exists(OUT):
 
 SOURCES = (emailed, digest, base)
 
+# 4. Hand corrections (tools/lesson_overrides.json) win over every source. Some
+# fixes can't be recovered from the emails: raw Keap tracking links that were
+# resolved to Vimeo by hand, a duplicated video link, bodies whose italics the
+# emails lost. Without this file a rebuild silently reverts them.
+OVERRIDES_PATH = os.path.join(HERE, "lesson_overrides.json")
+overrides = {}
+if os.path.exists(OVERRIDES_PATH):
+    overrides = json.load(open(OVERRIDES_PATH, encoding="utf-8"))
+
 
 def first_nonempty(num, field):
+    forced = overrides.get(field, {}).get(str(num))
+    if forced:
+        return forced
     for src in SOURCES:
         if num in src and src[num].get(field):
             return src[num][field]
