@@ -321,6 +321,8 @@ def _extract(path):
 # for Inner Peace edition (lessons.acim.org/en/chapters/lesson-201).
 BODY_SUPPLEMENTS = {
     201: (
+        "<i>I am not a body. I am free.</i>\n\n"
+        "<i>For I am still as God created me.</i>\n\n"
         "(181) <i>I trust my brothers, who are one with me.</i>\n\n"
         "No one but is my brother. I am blessed with oneness with the universe "
         "and God, my Father, one Creator of the whole that is my Self, forever "
