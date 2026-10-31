@@ -108,10 +108,22 @@ def first_nonempty(num, field):
     return ""
 
 
+def fixed_body(num, body):
+    """Apply the [old, new] swaps in overrides["body_replace"]. A swap whose text
+    is no longer there is reported, not skipped silently: the email was corrected
+    or reparsed, and the entry should be dropped or updated."""
+    for old, new in overrides.get("body_replace", {}).get(str(num), []):
+        if old in body:
+            body = body.replace(old, new)
+        elif new not in body:
+            print(f"WARNING: Lesson {num}: override text not found: {old[:60]!r}")
+    return body
+
+
 merged = {}
 for num in set(emailed) | set(digest) | set(base):
     phrase = first_nonempty(num, "phrase")
-    body = first_nonempty(num, "body")
+    body = fixed_body(num, first_nonempty(num, "body"))
     merged[num] = {
         "number": num,
         "title": first_nonempty(num, "title") or f"Lesson {num}",
