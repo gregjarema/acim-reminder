@@ -1,5 +1,5 @@
 {
- "_about": "Hand-corrected lesson fields that the saved emails cannot reproduce. tools/finalize_lessons.py applies these on top of the parsed data, so a rebuild keeps them. 'video' and 'body' replace the whole field; 'body_replace' lists [old, new] text swaps made inside the parsed body (wording fixed against lessons.acim.org). Keyed by field, then lesson number.",
+ "_about": "Hand-corrected lesson fields that the saved emails cannot reproduce. tools/finalize_lessons.py applies these on top of the parsed data, so a rebuild keeps them. 'video' and 'body' replace the whole field; 'body_replace' lists [old, new] text swaps made inside the parsed body (wording fixed against lessons.acim.org). Keyed by field, then lesson number. 'phrase' on Review VI days (201-220) is that day's own idea, the headline, instead of the shared theme \"I am not a body. I am free.\"",
  "video": {
   "8": "https://vimeo.com/495544050/95d6e34bc0",
   "13": "https://vimeo.com/495545451/33c12f2255",
@@ -108,5 +108,27 @@
     "Only forgiveness can relieve the mind of thinking that the body is its home. Only forgiveness can restore the peace that God intended for His holy Son. Only forgiveness can persuade the Son to look again upon his holiness."
    ]
   ]
+ },
+ "phrase": {
+  "201": "I trust my brothers, who are one with me.",
+  "202": "I will be still an instant and go home.",
+  "203": "I call upon God's Name and on my own.",
+  "204": "The Name of God is my inheritance.",
+  "205": "I want the peace of God.",
+  "206": "Salvation of the world depends on me.",
+  "207": "I bless the world because I bless myself.",
+  "208": "The peace of God is shining in me now.",
+  "209": "I feel the Love of God within me now.",
+  "210": "I choose the joy of God instead of pain.",
+  "211": "I am the holy Son of God Himself.",
+  "212": "I have a function God would have me fill.",
+  "213": "All things are lessons God would have me learn.",
+  "214": "I place the future in the Hands of God.",
+  "215": "Love is the way I walk in gratitude.",
+  "216": "It can be but myself I crucify.",
+  "217": "It can be but my gratitude I earn.",
+  "218": "Only my condemnation injures me.",
+  "219": "I am not a body. I am free.",
+  "220": "There is no peace except the peace of God."
  }
 }
