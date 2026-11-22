@@ -38,6 +38,10 @@
          installer confirmation; nothing here can install silently. -->
     <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
 
+    <!-- Save each sitting to Health Connect as mindful minutes (opt-in, from the
+         Workbook menu). Write only: the app never reads health data. -->
+    <uses-permission android:name="android.permission.health.WRITE_MINDFULNESS" />
+
     <application
         android:allowBackup="true"
         android:icon="@mipmap/ic_launcher"
@@ -63,6 +67,18 @@
         <activity
             android:name=".OnboardingActivity"
             android:exported="false" />
+
+        <!-- Why the app asks for Health Connect access. Android grants a health
+             permission only to an app that declares this page. -->
+        <activity
+            android:name=".HealthRationaleActivity"
+            android:exported="true"
+            android:permission="android.permission.START_VIEW_PERMISSION_USAGE">
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW_PERMISSION_USAGE" />
+                <category android:name="android.intent.category.HEALTH_PERMISSIONS" />
+            </intent-filter>
+        </activity>
 
         <!-- Today's lesson as a live wallpaper. BIND_WALLPAPER means only the
              system can bind to it, which Android requires for wallpapers. -->

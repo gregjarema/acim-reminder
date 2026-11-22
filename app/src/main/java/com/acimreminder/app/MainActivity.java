@@ -569,7 +569,7 @@ public class MainActivity extends Activity implements Playback.Controller {
 
     private void showOverflow(View anchor) {
         android.widget.PopupMenu menu = new android.widget.PopupMenu(popupContext(), anchor);
-        final int JUMP = 1, WALLPAPER = 2, COPY = 3, DARK_WP = 4, DND = 5, HOURS = 6, REMEMBER = 7, MEDREM = 8, DIAG = 9;
+        final int JUMP = 1, WALLPAPER = 2, COPY = 3, DARK_WP = 4, DND = 5, HOURS = 6, REMEMBER = 7, MEDREM = 8, DIAG = 9, HEALTH = 10;
 
         if (selectedTab == TAB_WORKBOOK || selectedTab == TAB_TEXT) {
             menu.getMenu().add(Menu.NONE, JUMP, 0,
@@ -590,6 +590,11 @@ public class MainActivity extends Activity implements Playback.Controller {
                     "Silence with Do Not Disturb");
             dnd.setCheckable(true);
             dnd.setChecked(prefs().getBoolean(MeditationService.KEY_DND_ENABLED, false));
+            // Each sitting counted as mindful minutes in Health Connect.
+            MenuItem health = menu.getMenu().add(Menu.NONE, HEALTH, 4,
+                    "Save sittings to Health Connect");
+            health.setCheckable(true);
+            health.setChecked(HealthLog.enabled(this) && HealthLog.granted(this));
         } else {
             menu.getMenu().add(Menu.NONE, COPY, 0, "Copy all passages");
         }
@@ -620,6 +625,7 @@ public class MainActivity extends Activity implements Playback.Controller {
                 case WALLPAPER: chooseWallpaper(); return true;
                 case DARK_WP: toggleDarkWallpaper(!item.isChecked()); return true;
                 case DND: toggleDnd(!item.isChecked()); return true;
+                case HEALTH: toggleHealth(!item.isChecked()); return true;
                 case COPY: copyAllSaved(); return true;
                 case HOURS: showReminderHoursDialog(); return true;
                 case DIAG: copyVideoDiagnostics(); return true;
@@ -1534,6 +1540,63 @@ public class MainActivity extends Activity implements Playback.Controller {
         } else {
             Toast.makeText(this, "A sitting will silence notifications — your "
                     + "closing bell still rings.", Toast.LENGTH_LONG).show();
+        }
+    }
+
+    private static final int REQ_HEALTH = 4201;
+
+    /**
+     * Save each sitting to Health Connect as mindful minutes (or stop). Turning
+     * it on asks for Health Connect access the first time; if the phone won't
+     * show that prompt (or it was turned down before), Health Connect's own
+     * page for this app opens instead, where access can be allowed by hand.
+     */
+    private void toggleHealth(boolean on) {
+        if (!HealthLog.supported()) {
+            Toast.makeText(this, "Saving to Health Connect needs Android 16 or newer.",
+                    Toast.LENGTH_LONG).show();
+            return;
+        }
+        prefs().edit().putBoolean(HealthLog.KEY_ENABLED, on).apply();
+        if (!on) {
+            Toast.makeText(this, "Sittings won't be saved to Health Connect.",
+                    Toast.LENGTH_SHORT).show();
+            return;
+        }
+        if (HealthLog.granted(this)) {
+            Toast.makeText(this, "Each sitting will count as mindful minutes.",
+                    Toast.LENGTH_LONG).show();
+            return;
+        }
+        try {
+            requestPermissions(new String[] { HealthLog.PERMISSION }, REQ_HEALTH);
+        } catch (Exception e) {
+            openHealthPermissions();
+        }
+    }
+
+    @Override
+    public void onRequestPermissionsResult(int requestCode, String[] permissions,
+                                           int[] grantResults) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+        if (requestCode != REQ_HEALTH) return;
+        if (HealthLog.granted(this)) {
+            Toast.makeText(this, "Each sitting will count as mindful minutes.",
+                    Toast.LENGTH_LONG).show();
+        } else {
+            Toast.makeText(this, "Allow \"Mindfulness\" for this app in Health Connect.",
+                    Toast.LENGTH_LONG).show();
+            openHealthPermissions();
+        }
+    }
+
+    private void openHealthPermissions() {
+        try {
+            startActivity(new Intent(HealthLog.ACTION_MANAGE)
+                    .putExtra(Intent.EXTRA_PACKAGE_NAME, getPackageName()));
+        } catch (Exception e) {
+            Toast.makeText(this, "Open Health Connect and allow this app to write "
+                    + "mindfulness.", Toast.LENGTH_LONG).show();
         }
     }
 

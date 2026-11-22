@@ -131,9 +131,11 @@ public class MeditationService extends Service {
     private void handleStart(Intent intent) {
         Notify.ensureChannels(this);
         clearReminders();
-        long endTime = System.currentTimeMillis() + durationFrom(intent);
+        long now = System.currentTimeMillis();
+        long endTime = now + durationFrom(intent);
         getSharedPreferences(OnboardingActivity.PREFS, MODE_PRIVATE)
                 .edit().putLong(KEY_MEDITATION_END_AT, endTime).apply();
+        HealthLog.sittingStarted(this, now);
 
         startForeground(MED_NOTIF_ID, buildCountdown(endTime),
                 ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PLAYBACK);
@@ -202,6 +204,12 @@ public class MeditationService extends Service {
         // mode was silently swallowing both the bell and the vibration.
         restoreDnd(ctx);
         postCompletion(ctx, channelRings);
+        // Save the sitting to Health Connect (if switched on), ending at the
+        // planned end: a bell that fires a little late shouldn't add minutes.
+        long now = System.currentTimeMillis();
+        long plannedEnd = ctx.getSharedPreferences(OnboardingActivity.PREFS, Context.MODE_PRIVATE)
+                .getLong(KEY_MEDITATION_END_AT, 0L);
+        HealthLog.sittingEnded(ctx, plannedEnd > 0L ? Math.min(now, plannedEnd) : now);
         ctx.getSharedPreferences(OnboardingActivity.PREFS, Context.MODE_PRIVATE)
                 .edit().remove(KEY_MEDITATION_END_AT).apply();
         NotificationManager nm = ctx.getSystemService(NotificationManager.class);
@@ -317,6 +325,8 @@ public class MeditationService extends Service {
 
     private void handleStop() {
         cancelEndAlarm();
+        // Stopped early: save the minutes actually sat (a minute or more).
+        HealthLog.sittingEnded(this, System.currentTimeMillis());
         finish();
     }
 

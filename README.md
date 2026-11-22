@@ -197,6 +197,29 @@ playing.
 
 ---
 
+## Mindful minutes in Health Connect
+
+Each Workbook sitting can be saved to Health Connect as a meditation session,
+so it counts towards the phone's mindful minutes. It is off until you turn it
+on: **⋯ → Save sittings to Health Connect** on the Workbook tab. The first time,
+Android asks you to allow access; if that prompt doesn't appear, Health
+Connect's page for the app opens, and you allow **Mindfulness** there.
+
+- A sitting that runs to the closing bell is saved in full, ending at the
+  planned end even if the bell fires a moment late.
+- A sitting you stop early is saved up to the moment you stopped. Under a
+  minute isn't saved.
+- Each session is titled with its lesson ("Lesson 104"), with the idea as
+  the note.
+- The app only writes. It never reads anything from Health Connect.
+
+It needs Android 16 (or Android 14/15 with an up-to-date Health Connect). On
+older phones the menu item says so and nothing else changes. The code is in
+`HealthLog.java`; `HealthRationaleActivity.java` is the "why does this app want
+access" page Android requires before it grants a health permission.
+
+---
+
 ## Saved passages
 
 Highlight anything in the Workbook or the Text and choose **Save passage** from
