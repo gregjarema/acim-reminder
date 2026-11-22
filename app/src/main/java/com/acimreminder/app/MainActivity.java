@@ -569,7 +569,7 @@ public class MainActivity extends Activity implements Playback.Controller {
 
     private void showOverflow(View anchor) {
         android.widget.PopupMenu menu = new android.widget.PopupMenu(popupContext(), anchor);
-        final int JUMP = 1, WALLPAPER = 2, COPY = 3, DARK_WP = 4, DND = 5, HOURS = 6, REMEMBER = 7, MEDREM = 8, DIAG = 9, HEALTH = 10;
+        final int JUMP = 1, WALLPAPER = 2, COPY = 3, DARK_WP = 4, DND = 5, HOURS = 6, REMEMBER = 7, MEDREM = 8, DIAG = 9, HEALTH = 10, HEALTH_STATUS = 11;
 
         if (selectedTab == TAB_WORKBOOK || selectedTab == TAB_TEXT) {
             menu.getMenu().add(Menu.NONE, JUMP, 0,
@@ -595,6 +595,9 @@ public class MainActivity extends Activity implements Playback.Controller {
                     "Save sittings to Health Connect");
             health.setCheckable(true);
             health.setChecked(HealthLog.enabled(this) && HealthLog.granted(this));
+            if (HealthLog.enabled(this)) {
+                menu.getMenu().add(Menu.NONE, HEALTH_STATUS, 4, "Health Connect status…");
+            }
         } else {
             menu.getMenu().add(Menu.NONE, COPY, 0, "Copy all passages");
         }
@@ -626,6 +629,7 @@ public class MainActivity extends Activity implements Playback.Controller {
                 case DARK_WP: toggleDarkWallpaper(!item.isChecked()); return true;
                 case DND: toggleDnd(!item.isChecked()); return true;
                 case HEALTH: toggleHealth(!item.isChecked()); return true;
+                case HEALTH_STATUS: showHealthStatus(); return true;
                 case COPY: copyAllSaved(); return true;
                 case HOURS: showReminderHoursDialog(); return true;
                 case DIAG: copyVideoDiagnostics(); return true;
@@ -1588,6 +1592,26 @@ public class MainActivity extends Activity implements Playback.Controller {
                     Toast.LENGTH_LONG).show();
             openHealthPermissions();
         }
+    }
+
+    /**
+     * What happened to the last sitting, plus a one-minute test write, so a
+     * session that never shows up can be traced to this app or to Health Connect.
+     */
+    private void showHealthStatus() {
+        String access = !HealthLog.supported() ? "Not supported on this Android."
+                : HealthLog.granted(this) ? "Allowed." : "Not allowed yet.";
+        new AlertDialog.Builder(popupContext())
+                .setTitle("Health Connect")
+                .setMessage("Access: " + access + "\n\nLast sitting:\n"
+                        + HealthLog.lastStatus(this)
+                        + "\n\n\"Save a test\" saves a 1-minute session ending now. "
+                        + "Then look in Health Connect under Mindfulness.")
+                .setPositiveButton("Save a test", (d, w) -> HealthLog.writeTest(this,
+                        line -> Toast.makeText(this, line, Toast.LENGTH_LONG).show()))
+                .setNeutralButton("Open Health Connect", (d, w) -> openHealthPermissions())
+                .setNegativeButton("Close", null)
+                .show();
     }
 
     private void openHealthPermissions() {
