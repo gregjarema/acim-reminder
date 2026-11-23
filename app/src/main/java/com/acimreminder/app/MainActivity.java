@@ -1283,6 +1283,14 @@ public class MainActivity extends Activity implements Playback.Controller {
                 // tab's is). Measuring then would size everything to nothing and
                 // scale the page to zero, so wait until it has a real size.
                 + "if(W<50||H<30)return;"
+                // A new width (the phone rotated) makes the heights forced for the
+                // old one wrong: landscape's 508px frame kept in portrait leaves a
+                // 214px picture at the top of a 508px player, its controls far
+                // below the visible box. Clear every forced height before refitting.
+                + "if(window.__acimW!==undefined&&window.__acimW!==W){"
+                + "var M=d.querySelectorAll('[data-acim]');"
+                + "for(var mi=0;mi<M.length;mi++){M[mi].removeAttribute('data-acim');"
+                + "M[mi].style.removeProperty('--acimh');}}"
                 // Fixes already made are remembered per size, so a change of size
                 // (the tab being shown) lets them be made again.
                 + "window.__acimEP=(window.__acimW===W)?(window.__acimEP||1):((window.__acimEP||0)+1);"
